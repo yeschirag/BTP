@@ -1,0 +1,47 @@
+# Compiled binaries and build objects
+*.o
+*.out
+*.exe
+*.d
+*.a
+*.so
+*.dylib
+*.log
+
+# Standalone simulation executables
+src/sim_llc_prefetch_aware
+src/run_multi_eval_suite
+a.exe
+
+# ChampSim build directories
+ChampSim/bin/
+ChampSim/obj/
+
+# LaTeX auxiliary files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.nav
+*.out
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+
+# OS / Editor files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+
+# Large media files
+media/eval 2 video/*.mkv
+media/eval 2 video/*.wfp
+media/eval 2 video/Submission/*.mkv

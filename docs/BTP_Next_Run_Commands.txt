@@ -1,0 +1,23 @@
+NEXT RUN COMMANDS
+
+Current run target:
+- 4-core prefetch-aware binary using va_ampm_lite
+- Output saved to results/mc_pa_ampm_mix1.txt
+
+Command:
+cd ~/BTP/ChampSim
+mkdir -p results
+./bin/champsim_4core_pa_ampm -w 500000 -i 5000000 \
+traces/403.gcc-16B.champsimtrace.xz \
+traces/429.mcf-184B.champsimtrace.xz \
+traces/600.perlbench_s-210B.champsimtrace.xz \
+traces/471.omnetpp-188B.champsimtrace.xz \
+> results/mc_pa_ampm_mix1.txt 2>&1
+
+Check output:
+tail -n 30 results/mc_pa_ampm_mix1.txt
+
+If JSON is edited again:
+rm -rf .csconfig
+./config.sh champsim_4core_pa_ampm.json
+make -j24

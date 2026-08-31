@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero-Overhead Prefetch-Resilient LLC - BTP Presentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0f172a;
+    --card-bg: #1e293b;
+    --primary-blue: #38bdf8;
+    --accent-teal: #2dd4bf;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+
+  .deck-container {
+    width: 100%;
+    max-width: 1050px;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+
+  .slide {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2rem 2.2rem 4rem 2.2rem;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    position: relative;
+  }
+
+  .slide-header {
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .slide-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .card {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.2rem;
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+    color: var(--accent-teal);
+  }
+
+  ul { list-style-type: none; }
+
+  li {
+    position: relative;
+    padding-left: 1.2rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: #e2e8f0;
+  }
+
+  li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--primary-blue);
+    font-weight: bold;
+  }
+
+  .hero-slide {
+    text-align: center;
+    background: #0f172a;
+    border: 1.5px solid var(--primary-blue);
+    padding: 3rem 2rem;
+  }
+
+  .hero-title {
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.15rem;
+    color: var(--accent-teal);
+    margin-bottom: 2rem;
+  }
+
+  .metadata-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .meta-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .meta-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+  }
+
+  .meta-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+  }
+
+  img.chart-img {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+  }
+
+  th, td {
+    padding: 0.55rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.88rem;
+  }
+
+  th { color: var(--accent-teal); font-weight: 700; }
+
+  .slide-footer {
+    position: absolute;
+    bottom: 0.8rem;
+    left: 2.2rem;
+    right: 2.2rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.5rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="deck-container">
+
+  <!-- SLIDE 1 -->
+  <div class="slide hero-slide">
+    <div class="hero-title">Zero-Overhead Prefetch-Resilient LLC Replacement Policy</div>
+    <div class="hero-subtitle">BTP Progress Review</div>
+    
+    <div class="metadata-grid">
+      <div class="meta-card">
+        <div class="meta-label">Presenter</div>
+        <div class="meta-value">Chirag Sharma</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">Roll No: S20240010223</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">Project Advisor</div>
+        <div class="meta-value">Dr. Bheemappa Halavar</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">Computer Science & Engineering</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2 -->
+  <div class="slide">
+    <div class="slide-header">
+      <div class="slide-title">1. Motivation & Problem Statement</div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">1. The Prefetching Dilemma</div>
+        <ul>
+          <li><strong>Aggressive Speculation:</strong> Prefetchers (AMPM, IP-Stride) boost regular patterns but flood LLC on pointer-chasing patterns (<code>429.mcf</code>).</li>
+          <li><strong>Policy Blindness:</strong> Standard LRU/SRRIP policies treat speculative prefetches with high priority, evicting demand data.</li>
+          <li><strong>Result:</strong> Heavy LLC thrashing & IPC degradation.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">2. Limitation of Prior Art</div>
+        <ul>
+          <li><strong>DRRIP:</strong> Requires PSEL set-dueling counters.</li>
+          <li><strong>SHiP:</strong> Requires an 8,192-entry SHCT table.</li>
+          <li><strong>Research Goal:</strong> Achieve prefetch resilience with <strong>0 extra storage bits</strong>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Chirag Sharma (S20240010223)</span>
+      <span>Guide: Dr. Bheemappa Halavar</span>
+      <span>Slide 2 / 6</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 -->
+  <div class="slide">
+    <div class="slide-header">
+      <div class="slide-title">2. Proposed Architecture</div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Key Architectural Rules</div>
+        <ul>
+          <li><strong>Demand Fills:</strong> Inserted at MRU / RRPV=2 (standard priority).</li>
+          <li><strong>Prefetch Fills:</strong> Demoted to LRU / RRPV=3 (distant priority).</li>
+          <li><strong>Useful Hits:</strong> Promoted to MRU / RRPV=0 upon hit.</li>
+          <li><strong>Zero Overhead:</strong> Uses ChampSim's <code>access_type::PREFETCH</code> hint (0 extra storage bytes).</li>
+        </ul>
+      </div>
+      <div>
+        <img class="chart-img" src="chart_prefetch_usefulness.png" alt="Prefetch Usefulness">
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Chirag Sharma (S20240010223)</span>
+      <span>Guide: Dr. Bheemappa Halavar</span>
+      <span>Slide 3 / 6</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 4 -->
+  <div class="slide">
+    <div class="slide-header">
+      <div class="slide-title">3. 4-Core Shared Cache Results</div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <img class="chart-img" src="chart_4core_all_cpus_ipc.png" alt="4-Core All CPUs IPC">
+      </div>
+      <div class="card">
+        <div class="card-title">Speedup Breakthroughs</div>
+        <ul>
+          <li><strong>CPU 0 (gcc):</strong> IPC increased from <strong>0.42</strong> to <strong>2.18</strong> (<strong>5.12x Speedup / +512% Boost</strong>).</li>
+          <li><strong>CPU 3 (omnetpp):</strong> IPC increased from <strong>0.26</strong> to <strong>2.18</strong> (<strong>8.50x Speedup / +850% Boost</strong>).</li>
+          <li><strong>CPU 2 (perlbench):</strong> IPC improved from <strong>1.47</strong> to <strong>2.29</strong>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Chirag Sharma (S20240010223)</span>
+      <span>Guide: Dr. Bheemappa Halavar</span>
+      <span>Slide 4 / 6</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 5 -->
+  <div class="slide">
+    <div class="slide-header">
+      <div class="slide-title">4. Quantitative Summary</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Baseline (LRU)</th>
+          <th>PA-LRU</th>
+          <th>PA-SRRIP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>CPU 0 (gcc) IPC</td>
+          <td>0.4248</td>
+          <td><strong>2.1770</strong></td>
+          <td><strong>2.0550</strong></td>
+        </tr>
+        <tr>
+          <td>CPU 3 (omnetpp) IPC</td>
+          <td>0.2566</td>
+          <td><strong>2.1830</strong></td>
+          <td><strong>0.3257</strong></td>
+        </tr>
+        <tr>
+          <td>Exec Time (200M)</td>
+          <td>7 hrs 04 mins</td>
+          <td><strong>19 mins</strong></td>
+          <td><strong>38 mins</strong></td>
+        </tr>
+        <tr>
+          <td>Hardware Overhead</td>
+          <td>0 Bytes</td>
+          <td><strong>0 Bytes</strong></td>
+          <td><strong>0 Bytes</strong></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="slide-footer">
+      <span>Chirag Sharma (S20240010223)</span>
+      <span>Guide: Dr. Bheemappa Halavar</span>
+      <span>Slide 5 / 6</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 6 -->
+  <div class="slide">
+    <div class="slide-header">
+      <div class="slide-title">5. Progress & 2-Month Roadmap</div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Accomplished Work</div>
+        <ul>
+          <li>Implemented <code>lru_prefetch_aware</code> & <code>rrip_prefetch_aware</code> C++ modules in ChampSim.</li>
+          <li>Built native compilation system & cycle-accurate LLC simulator.</li>
+          <li>Completed single-core and 4-core SPEC CPU DPC-3 trace evaluations.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Next 2-Month Roadmap</div>
+        <ul>
+          <li><strong>Multicore Scalability & QoS Tests:</strong> Evaluate 8-core and 16-core shared LLC configurations under heavy pointer contention (<code>mcf x 8</code>, <code>mcf x 16</code>).</li>
+          <li><strong>Adaptive Demotion Depth:</strong> Dynamically adjust insertion depth based on real-time MPKI.</li>
+          <li><strong>Full SPEC 2017 Expansion:</strong> 15+ benchmark suite for thesis.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Chirag Sharma (S20240010223)</span>
+      <span>Guide: Dr. Bheemappa Halavar</span>
+      <span>Slide 6 / 6</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

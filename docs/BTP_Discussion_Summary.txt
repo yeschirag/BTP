@@ -1,0 +1,156 @@
+IN-DEPTH SUMMARY OF BTP DISCUSSION
+
+Student: Chirag Topic Area: Last-Level Cache (LLC) Replacement,
+Prefetching, and Drishti (MICRO’25) Advisor: Dr. Bheemappa Halavar
+
+  --------------------
+  1. INITIAL CONTEXT
+  --------------------
+
+Chirag began by reading the MICRO’25 paper: “Drishti: Do Not Forget
+Slicing While Designing Last-Level Cache Replacement Policies for
+Many-Core Systems.”
+
+He initially considered extending Drishti by making it explicitly
+prefetch-aware. After reaching out to one of the authors (Prerna), it
+was clarified that:
+
+-   Drishti is NOT a replacement policy.
+-   Drishti is a set of architectural enhancements: • Per-core global
+    reuse prediction • Dynamic sampled cache selection
+-   Prefetch awareness should come from the underlying replacement
+    policy (e.g., Mockingjay).
+
+Thus, modifying Drishti to directly handle prefetches would violate its
+design philosophy.
+
+  --------------------------
+  2. REFINED BTP DIRECTION
+  --------------------------
+
+The direction shifted from: “Prefetch-aware Drishti”
+
+To: “Lightweight, Prefetch-Resilient LLC Replacement Policy”
+
+The professor explicitly stated: - Focus on lightweight design -
+Prefetch-resilient behavior - Drishti can be explored during the
+semester
+
+This means: - Not designing heavy ML-based predictors - Not implementing
+full Hawkeye-level complexity - Focus on simple, low-overhead mechanisms
+
+  -----------------------------
+  3. IDENTIFIED RESEARCH GAPS
+  -----------------------------
+
+Based on literature exploration (Drishti, PACMan, IEEE CAL 2023):
+
+Gap 1: Lack of lightweight, prefetch-resilient replacement designs. Many
+prefetch-aware approaches add hardware complexity.
+
+Gap 2: Replacement–prefetch interaction is mostly studied in monolithic
+LLCs. Modern processors use sliced LLCs.
+
+Gap 3: Interaction between global reuse prediction and prefetch noise is
+unclear.
+
+Gap 4: Dynamic sampled-cache selection under prefetch-heavy workloads is
+not well characterized.
+
+Gap 5: Limited guidance on when sophisticated replacement is worthwhile
+under aggressive prefetching.
+
+  ------------------------------------------
+  4. MID-EVALUATION STRATEGY (2-WEEK PLAN)
+  ------------------------------------------
+
+Since mid-evaluation is in 2 weeks, the goal is: - Show progress - Show
+ChampSim runs - Show baseline comparison - Show understanding - Not
+produce final policy
+
+Minimum expectations for mid-eval: - ChampSim running successfully -
+Baseline LRU results - Comparison with one advanced policy (e.g.,
+Hawkeye) - Prefetch ON vs OFF comparison - One graph (MPKI or IPC) -
+Clear research question
+
+Primary early research question: “Does aggressive prefetching reduce the
+benefit of sophisticated replacement policies, and can lightweight
+modifications recover performance?”
+
+  --------------------------------------------
+  5. IMPLEMENTATION PLAN (LIGHTWEIGHT START)
+  --------------------------------------------
+
+Initial Safe Implementation:
+
+Low-Priority Insertion for Prefetches
+
+Idea: - Demand blocks → Insert at MRU - Prefetch blocks → Insert at low
+priority (near LRU) - If prefetched block is later used → normal
+promotion
+
+Benefits: - Minimal hardware overhead - No large predictors - No global
+structures - Reduces pollution from useless prefetches
+
+Where to implement in ChampSim: replacement//update_replacement_state()
+
+Modify insertion logic using: - is_prefetch flag
+
+Evaluation Plan: Compare: - Baseline LRU - Modified LRU With: - Prefetch
+ON - Prefetch OFF
+
+Metrics: - LLC MPKI - IPC
+
+  ----------------------------
+  6. LONGER-TERM POSSIBILITY
+  ----------------------------
+
+After baseline experiments:
+
+Possible directions: - Adaptive insertion control - Lightweight
+confidence tracking - Guardrail mechanism for aggressive prefetch
+noise - Characterization study of complexity vs benefit
+
+But: - No ML - No large reuse predictors initially - Keep design simple
+and defensible
+
+  ---------------------------------
+  7. PERSONAL CONTEXT (IMPORTANT)
+  ---------------------------------
+
+During this period: - Chirag had to travel urgently to Bangalore -
+Father undergoing cancer treatment - Medical reports required doctor
+consultation
+
+Despite personal stress: - Continued academic planning - Communicated
+transparently with advisor - Maintained professionalism
+
+  -------------------
+  8. CURRENT STATUS
+  -------------------
+
+Chirag is at implementation stage.
+
+Next immediate goals: 1. Get ChampSim running reliably. 2. Run baseline
+experiments. 3. Implement low-priority insertion for prefetch. 4.
+Generate at least one meaningful plot. 5. Prepare 4–5 slides for
+mid-evaluation.
+
+  -------------------------------
+  9. OVERALL STRATEGIC POSITION
+  -------------------------------
+
+This BTP is positioned as:
+
+-   Systems-level research
+-   Focused on LLC replacement
+-   Prefetch-resilient design
+-   Lightweight hardware cost
+-   Possibly interacting with Drishti later
+
+It is realistic for: - BTP completion - Conference-level paper (if
+results are strong) - Strong learning in microarchitecture
+
+  ----------------
+  END OF SUMMARY
+  ----------------

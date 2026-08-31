@@ -1,0 +1,212 @@
+\documentclass[aspectratio=169, 10pt]{beamer}
+
+% Clean Academic Beamer Setup
+\usetheme{Madrid}
+\usecolortheme{seahorse}
+
+% Color Definitions
+\definecolor{NavyDark}{RGB}{15, 23, 42}
+\definecolor{PrimaryBlue}{RGB}{30, 78, 121}
+\definecolor{TextMain}{RGB}{30, 41, 59}
+
+\setbeamercolor{structure}{fg=PrimaryBlue}
+\setbeamercolor{frametitle}{bg=PrimaryBlue,fg=white}
+\setbeamercolor{titlelike}{bg=PrimaryBlue,fg=white}
+
+% Remove default navigation symbols
+\setbeamertemplate{navigation symbols}{}
+
+% Clean Non-Overlapping Footer
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.35\paperwidth,ht=2.4ex,dp=1.0ex,leftskip=.3cm]{author in head/foot}%
+      \usebeamerfont{author in head/foot}Chirag Sharma (S20240010223)
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.40\paperwidth,ht=2.4ex,dp=1.0ex,center]{title in head/foot}%
+      \usebeamerfont{title in head/foot}Guide: Dr. Bheemappa Halavar
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.25\paperwidth,ht=2.4ex,dp=1.0ex,rightskip=.3cm]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber{} / \inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+% Packages
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+% Title & Author Info
+\title[Zero-Overhead Prefetch-Resilient LLC]{Zero-Overhead Prefetch-Resilient Last-Level Cache Policy}
+\subtitle{BTP Progress Review}
+\author[Chirag Sharma]{Chirag Sharma (Roll No: S20240010223)}
+\institute{Department of Computer Science \& Engineering}
+\date{\today}
+
+\begin{document}
+
+% ------------------------------------------------------------------------------
+% Slide 1: Title
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \titlepage
+  \centering
+  \small \textbf{Project Advisor:} Dr. Bheemappa Halavar
+\end{frame}
+
+% ------------------------------------------------------------------------------
+% Slide 2: Problem Statement
+% ------------------------------------------------------------------------------
+\begin{frame}{Motivation \& Problem Statement}
+  \begin{columns}[c]
+    \begin{column}{0.47\linewidth}
+      \begin{block}{1. Cache Thrashing by Prefetchers}
+        \begin{itemize}
+          \item Hardware prefetchers (AMPM, IP-Stride) flood the LLC on irregular pointer-chasing patterns (\texttt{429.mcf}).
+          \item LRU and SRRIP treat speculative prefetches with high priority, evicting demand data.
+          \item Causes severe LLC pollution and core IPC degradation under shared cache contention.
+        \end{itemize}
+      \end{block}
+    \end{column}
+
+    \begin{column}{0.47\linewidth}
+      \begin{block}{2. Overhead of Existing Solutions}
+        \begin{itemize}
+          \item \textbf{DRRIP:} Requires PSEL set-dueling counters.
+          \item \textbf{SHiP:} Requires an 8,192-entry SHCT predictor table.
+          \item \textbf{High Hardware Cost:} Storage, area, and power overheads.
+        \end{itemize}
+      \end{block}
+
+      \begin{block}{Research Goal}
+        Achieve prefetch resilience with \textbf{ZERO hardware storage overhead} (0 extra metadata bits).
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------------------------
+% Slide 3: Proposed Policy
+% ------------------------------------------------------------------------------
+\begin{frame}{Proposed Prefetch-Aware LLC Policy}
+  \begin{columns}[c]
+    \begin{column}{0.47\linewidth}
+      \begin{block}{Key Architectural Mechanism}
+        \begin{enumerate}
+          \item \textbf{Demoted Initial Insertion:}
+            \begin{itemize}
+              \item Demand Fills $\rightarrow$ MRU / $RRPV=2$.
+              \item Prefetch Fills $\rightarrow$ LRU / $RRPV=3$.
+            \end{itemize}
+          \item \textbf{Self-Adaptive Promotion:}
+            \begin{itemize}
+              \item Useful prefetches hit before eviction $\rightarrow$ Promoted to MRU / $RRPV=0$.
+              \item Useless prefetches fall off naturally.
+            \end{itemize}
+        \end{enumerate}
+      \end{block}
+
+      \begin{block}{Zero Hardware Overhead}
+        Uses ChampSim's \texttt{access\_type::PREFETCH} hint ($0$ extra storage counters).
+      \end{block}
+    \end{column}
+
+    \begin{column}{0.47\linewidth}
+      \centering
+      \includegraphics[width=\linewidth,keepaspectratio]{chart_prefetch_usefulness.png}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------------------------
+% Slide 4: 4-Core Results
+% ------------------------------------------------------------------------------
+\begin{frame}{4-Core Multicore Shared LLC Results (20M Run)}
+  \begin{columns}[c]
+    \begin{column}{0.47\linewidth}
+      \centering
+      \includegraphics[width=\linewidth,keepaspectratio]{chart_4core_all_cpus_ipc.png}
+    \end{column}
+
+    \begin{column}{0.47\linewidth}
+      \begin{block}{Key Performance Results (20M Sim)}
+        \begin{itemize}
+          \item \textbf{CPU 0 (gcc):} High IPC maintained at \textbf{2.180} ($>35\%$ prefetch hits promoted to MRU).
+          \item \textbf{CPU 1 (mcf):} Stable IPC at \textbf{0.0906–0.0993} (pointer noise demoted; prevents cross-core thrashing).
+          \item \textbf{CPU 2 (perlbench):} Consistent high IPC at \textbf{2.019}.
+          \item \textbf{CPU 3 (omnetpp):} Improved IPC up to \textbf{0.3207} under PA-SRRIP.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------------------------
+% Slide 5: Performance Summary Table
+% ------------------------------------------------------------------------------
+\begin{frame}{Quantitative Summary \& Efficiency (20M Instructions)}
+  \centering
+  \small
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Metric / Core} & \textbf{Baseline (LRU)} & \textbf{PA-LRU (20M)} & \textbf{PA-SRRIP (20M)} \\
+    \midrule
+    CPU 0 (\texttt{gcc}) IPC & 1.9670 & \textbf{2.1800} & \textbf{2.1790} \\
+    CPU 1 (\texttt{mcf}) IPC & 0.0743 & \textbf{0.0906} & \textbf{0.0993} \\
+    CPU 2 (\texttt{perlbench}) IPC & 2.0150 & \textbf{2.0190} & \textbf{2.0180} \\
+    CPU 3 (\texttt{omnetpp}) IPC & 0.2566 & \textbf{0.3145} & \textbf{0.3207} \\
+    \midrule
+    Hardware Overhead & 0 Bytes & \textbf{0 Bytes} & \textbf{0 Bytes} \\
+    Prefetch Usefulness & N/A & \textbf{32.25\%} & \textbf{31.80\%} \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.4cm}
+
+  \begin{block}{Summary Insight}
+    Prefetch-aware demotion protects shared cache lines from cross-core prefetch noise without requiring hardware predictor tables.
+  \end{block}
+\end{frame}
+
+% ------------------------------------------------------------------------------
+% Slide 6: 2-Month Roadmap
+% ------------------------------------------------------------------------------
+\begin{frame}{Progress Summary \& 2-Month Roadmap}
+  \begin{columns}[c]
+    \begin{column}{0.47\linewidth}
+      \begin{block}{Accomplished Work}
+        \begin{itemize}
+          \item Implemented \texttt{lru\_prefetch\_aware} and \texttt{rrip\_prefetch\_aware} C++ modules in ChampSim.
+          \item Built native compilation system and cycle-accurate LLC simulator.
+          \item Completed evaluations across single-core and 4-core SPEC CPU DPC-3 traces.
+        \end{itemize}
+      \end{block}
+    \end{column}
+
+    \begin{column}{0.47\linewidth}
+      \begin{block}{Next 2-Month Roadmap}
+        \begin{enumerate}
+          \item \textbf{Multicore Scalability \& QoS Tests:} Evaluate 8-core and 16-core shared LLC configurations under heavy pointer-chasing contention (\texttt{mcf $\times$ 8}, \texttt{mcf $\times$ 16}).
+          \item \textbf{Adaptive Demotion Depth:} Dynamically adjust prefetch insertion depth based on real-time LLC MPKI and memory channel congestion.
+          \item \textbf{Full SPEC 2017 Expansion:} 15+ benchmark evaluation for final BTP thesis.
+        \end{enumerate}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------------------------
+% Slide 7: Conclusion
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \centering
+  \Huge \textbf{Thank You!} \\
+  \vspace{0.5cm}
+  \Large Questions \& Discussion \\
+  \vspace{0.8cm}
+  \small \textbf{Student:} Chirag Sharma (Roll No: S20240010223) \\
+  \small \textbf{Guide:} Dr. Bheemappa Halavar
+\end{frame}
+
+\end{document}
