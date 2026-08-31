@@ -45,3 +45,4 @@ Thumbs.db
 media/eval 2 video/*.mkv
 media/eval 2 video/*.wfp
 media/eval 2 video/Submission/*.mkv
+media/*.mp4
