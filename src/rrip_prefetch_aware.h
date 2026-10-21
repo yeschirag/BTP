@@ -3,21 +3,15 @@
 
 #include <cstdint>
 #include <vector>
+
+#include "cache.h"
 #include "modules.h"
 
-/**
- * Zero-Overhead Prefetch-Aware Static RRIP (PA-SRRIP) Policy
- * Uses 2-bit RRPV (Re-Reference Interval Prediction) values per line (0..3).
- * - Demand fills are inserted at RRPV = 2 (standard SRRIP insertion).
- * - Prefetch fills are inserted at RRPV = 3 (distant / LRU insertion priority).
- * - Cache hits promote the line to RRPV = 0.
- * - Victims are selected by finding a line with RRPV = 3 (incrementing set RRPVs if needed).
- */
-class rrip_prefetch_aware : public replacement
+class rrip_prefetch_aware : public champsim::modules::replacement
 {
   long NUM_WAY;
   static constexpr uint8_t MAX_RRPV = 3;
-  
+
   std::vector<uint8_t> rrpv;
   std::vector<bool> is_prefetched;
 

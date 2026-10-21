@@ -1,4 +1,5 @@
 #include "lru_prefetch_aware.h"
+#include "cache.h"
 
 #include <algorithm>
 #include <cassert>

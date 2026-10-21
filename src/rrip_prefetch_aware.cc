@@ -1,4 +1,5 @@
 #include "rrip_prefetch_aware.h"
+#include "cache.h"
 
 #include <algorithm>
 #include <cassert>
@@ -41,13 +42,13 @@ void rrip_prefetch_aware::replacement_cache_fill(uint32_t triggering_cpu, long s
   if (type == access_type::PREFETCH) {
     // PREFETCH: Insert at DISTANT priority (RRPV = 3)
     prefetch_fills++;
-    is_prefetched[index] = true;
-    rrpv[index] = MAX_RRPV; // 3
+    is_prefetched.at(index) = true;
+    rrpv.at(index) = MAX_RRPV; // 3
   } else {
     // DEMAND: Insert at LONG-RE-REFERENCE priority (RRPV = 2, standard SRRIP)
     demand_fills++;
-    is_prefetched[index] = false;
-    rrpv[index] = MAX_RRPV - 1; // 2
+    is_prefetched.at(index) = false;
+    rrpv.at(index) = MAX_RRPV - 1; // 2
   }
 }
 

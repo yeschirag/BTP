@@ -3,9 +3,11 @@
 
 #include <cstdint>
 #include <vector>
+
+#include "cache.h"
 #include "modules.h"
 
-class lru_prefetch_aware : public replacement
+class lru_prefetch_aware : public champsim::modules::replacement
 {
   long NUM_WAY;
   uint64_t cycle = 0;

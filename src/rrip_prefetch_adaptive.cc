@@ -1,4 +1,5 @@
 #include "rrip_prefetch_adaptive.h"
+#include "cache.h"
 
 #include <algorithm>
 #include <cassert>
