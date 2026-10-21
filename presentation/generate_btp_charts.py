@@ -104,4 +104,29 @@ plt.tight_layout()
 plt.savefig(os.path.join(SCRIPT_DIR, 'chart_4core_gcc_speedup.png'), dpi=300, bbox_inches='tight')
 plt.close()
 
-print('Charts updated with 20M simulation numbers!')
+# ==============================================================================
+# Chart 4: Storage Budget vs Performance Resilience (Pareto Efficiency)
+# ==============================================================================
+fig, ax = plt.subplots(figsize=(6.0, 3.8), dpi=300)
+
+policies = ['Baseline\nLRU', 'Baseline\nSRRIP', 'DRRIP\n(Set Dueling)', 'SHiP\n(8K SHCT)', 'PA-LRU\n(Ours)', 'PA-SRRIP\n(Ours)', 'PA-Adaptive\n(Ours)']
+misses = [15720, 15682, 15617, 14589, 15528, 15507, 15503]
+storage_bytes = [0, 0, 16, 2048, 0, 0, 0.75]
+colors = ['#94a3b8', '#94a3b8', '#f59e0b', '#3b82f6', '#10b981', '#06b6d4', '#8b5cf6']
+
+bars = ax.bar(policies, misses, color=colors, width=0.55, edgecolor='black', linewidth=0.8)
+ax.set_ylabel('LLC Demand Misses (Lower is Better)', fontsize=9.5, fontweight='bold')
+ax.set_title('Heterogeneous 4-Core Misses vs. Hardware Storage Budget', fontsize=10.5, fontweight='bold', pad=10)
+ax.set_ylim(14000, 16200)
+
+for i, bar in enumerate(bars):
+    h = bar.get_height()
+    cost_str = f"{int(storage_bytes[i])} B" if storage_bytes[i] >= 1 else ("0 B" if storage_bytes[i] == 0 else "0.75 B")
+    ax.annotate(f'{h}\n({cost_str})', xy=(bar.get_x() + bar.get_width()/2, h),
+                xytext=(0, 2), textcoords="offset points", ha='center', va='bottom', fontsize=7.5, fontweight='bold')
+
+plt.tight_layout()
+plt.savefig(os.path.join(SCRIPT_DIR, 'chart_storage_vs_misses.png'), dpi=300, bbox_inches='tight')
+plt.close()
+
+print('Charts updated with 20M simulation numbers and Chart 4 created!')

@@ -11,6 +11,7 @@
 # Standalone simulation executables
 src/sim_llc_prefetch_aware
 src/run_multi_eval_suite
+run_eval
 a.exe
 
 # ChampSim build directories
@@ -45,4 +46,5 @@ Thumbs.db
 media/eval 2 video/*.mkv
 media/eval 2 video/*.wfp
 media/eval 2 video/Submission/*.mkv
-media/*.mp4
+media/**/*.mp4
+*.mp4

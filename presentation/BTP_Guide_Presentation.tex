@@ -8,6 +8,8 @@
 \definecolor{NavyDark}{RGB}{15, 23, 42}
 \definecolor{PrimaryBlue}{RGB}{30, 78, 121}
 \definecolor{TextMain}{RGB}{30, 41, 59}
+\definecolor{AccentGreen}{RGB}{16, 185, 129}
+\definecolor{AlertRed}{RGB}{239, 68, 68}
 
 \setbeamercolor{structure}{fg=PrimaryBlue}
 \setbeamercolor{frametitle}{bg=PrimaryBlue,fg=white}
@@ -36,10 +38,11 @@
 % Packages
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{amsmath}
 
 % Title & Author Info
-\title[Zero-Overhead Prefetch-Resilient LLC]{Zero-Overhead Prefetch-Resilient Last-Level Cache Policy}
-\subtitle{BTP Progress Review}
+\title[Zero-Overhead Prefetch-Resilient LLC]{Zero-Overhead Prefetch-Resilient Last-Level Cache Policy for Multicore Systems}
+\subtitle{BTP Mid-Evaluation Review}
 \author[Chirag Sharma]{Chirag Sharma (Roll No: S20240010223)}
 \institute{Department of Computer Science \& Engineering}
 \date{\today}
@@ -52,90 +55,118 @@
 \begin{frame}
   \titlepage
   \centering
-  \small \textbf{Project Advisor:} Dr. Bheemappa Halavar
+  \small \textbf{Project Advisor:} Dr. Bheemappa Halavar \\
+  \footnotesize Indian Institute of Information Technology, Sri City
 \end{frame}
 
 % ------------------------------------------------------------------------------
-% Slide 2: Problem Statement
+% Slide 2: Problem Statement & Motivation
 % ------------------------------------------------------------------------------
-\begin{frame}{Motivation \& Problem Statement}
+\begin{frame}{1. Motivation \& The Prefetch Pollution Dilemma}
   \begin{columns}[c]
-    \begin{column}{0.47\linewidth}
-      \begin{block}{1. Cache Thrashing by Prefetchers}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{The Hardware Prefetching Dilemma}
         \begin{itemize}
-          \item Hardware prefetchers (AMPM, IP-Stride) flood the LLC on irregular pointer-chasing patterns (\texttt{429.mcf}).
-          \item LRU and SRRIP treat speculative prefetches with high priority, evicting demand data.
-          \item Causes severe LLC pollution and core IPC degradation under shared cache contention.
+          \item Hardware prefetchers (IP-Stride, AMPM, SPP) hide memory latency for regular spatial streams (\texttt{gcc}, \texttt{lbm}).
+          \item For irregular / pointer-chasing patterns (\texttt{429.mcf}), prefetch accuracy drops to $<1\%$.
+          \item Inaccurate prefetch blocks flood the shared Last-Level Cache (LLC), causing severe cache pollution.
         \end{itemize}
       \end{block}
     \end{column}
 
-    \begin{column}{0.47\linewidth}
-      \begin{block}{2. Overhead of Existing Solutions}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{Multicore Amplification \& Policy Blindness}
         \begin{itemize}
-          \item \textbf{DRRIP:} Requires PSEL set-dueling counters.
-          \item \textbf{SHiP:} Requires an 8,192-entry SHCT predictor table.
-          \item \textbf{High Hardware Cost:} Storage, area, and power overheads.
+          \item Standard replacement policies (LRU, SRRIP) are \textbf{prefetch-oblivious}.
+          \item Speculative prefetches receive high priority ($RRPV=2$ / MRU), evicting active demand data of co-running cores.
+          \item In shared 4-core LLCs, pointer noise thrashes cross-core capacity, causing up to \textbf{50\%+ IPC collapse}.
         \end{itemize}
-      \end{block}
-
-      \begin{block}{Research Goal}
-        Achieve prefetch resilience with \textbf{ZERO hardware storage overhead} (0 extra metadata bits).
       \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
 % ------------------------------------------------------------------------------
-% Slide 3: Proposed Policy
+% Slide 3: Literature Review & Critical Research Gaps
 % ------------------------------------------------------------------------------
-\begin{frame}{Proposed Prefetch-Aware LLC Policy}
+\begin{frame}{2. Literature Review \& Identified Research Gaps}
+  \begin{columns}[t]
+    \begin{column}{0.48\linewidth}
+      \begin{block}{State-of-the-Art Approaches}
+        \begin{itemize}
+          \item \textbf{Drishti (MICRO 2025):} Slicing-aware framework using per-core GPHT tables and sampled cache selection. Framework is replacement-agnostic and relies on underlying policies for prefetch handling.
+          \item \textbf{PACMan (IEEE CAL 2023):} Prefetch-aware cache management via accuracy tracking; requires additional sampling counters.
+          \item \textbf{DRRIP (ISCA 2010):} Dynamic RRIP using set-dueling PSEL counters.
+          \item \textbf{SHiP (ISCA 2011):} Signature-based hit predictor requiring an \textbf{8,192-entry SHCT table} (2 KB SRAM).
+        \end{itemize}
+      \end{block}
+    \end{column}
+
+    \begin{column}{0.48\linewidth}
+      \begin{block}{Critical Research Gaps}
+        \begin{enumerate}
+          \item \textbf{Lack of Zero-Overhead Solutions:} Existing schemes introduce dedicated SRAM tables or complex set dueling.
+          \item \textbf{Monolithic vs. Sliced Gap:} Prefetch-replacement interactions in multicore shared LLCs require lightweight, self-adaptive mechanisms.
+          \item \textbf{Core Goal:} Achieve prefetch resilience with \textbf{ZERO hardware storage overhead} (0 extra metadata bits).
+        \end{enumerate}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------------------------
+% Slide 4: Proposed Policy Architecture
+% ------------------------------------------------------------------------------
+\begin{frame}{3. Proposed Architecture: Zero-Overhead \& Adaptive Demotion}
   \begin{columns}[c]
-    \begin{column}{0.47\linewidth}
-      \begin{block}{Key Architectural Mechanism}
+    \begin{column}{0.50\linewidth}
+      \begin{block}{Key Architectural Mechanisms}
         \begin{enumerate}
           \item \textbf{Demoted Initial Insertion:}
             \begin{itemize}
-              \item Demand Fills $\rightarrow$ MRU / $RRPV=2$.
-              \item Prefetch Fills $\rightarrow$ LRU / $RRPV=3$.
+              \item Demand fills $\rightarrow$ Inserted at MRU / $RRPV=2$.
+              \item Prefetch fills $\rightarrow$ Demoted to near-LRU / $RRPV=3$.
+              \item Useless prefetches sit in victim position and exit quietly.
             \end{itemize}
-          \item \textbf{Self-Adaptive Promotion:}
+          \item \textbf{Self-Adaptive Promotion on Hit:}
             \begin{itemize}
-              \item Useful prefetches hit before eviction $\rightarrow$ Promoted to MRU / $RRPV=0$.
-              \item Useless prefetches fall off naturally.
+              \item On cache hit, prefetched line promoted to MRU / $RRPV=0$.
+              \item Line is reclassified as verified demand data.
+            \end{itemize}
+          \item \textbf{Novel PA-Adaptive Extension (0.75 Bytes):}
+            \begin{itemize}
+              \item 6-bit saturating counter dynamically adapts insertion between $RRPV=2$ (streaming) and $RRPV=3$ (noise filtering).
             \end{itemize}
         \end{enumerate}
       \end{block}
-
-      \begin{block}{Zero Hardware Overhead}
-        Uses ChampSim's \texttt{access\_type::PREFETCH} hint ($0$ extra storage counters).
-      \end{block}
     \end{column}
 
-    \begin{column}{0.47\linewidth}
+    \begin{column}{0.46\linewidth}
       \centering
       \includegraphics[width=\linewidth,keepaspectratio]{chart_prefetch_usefulness.png}
+      \vspace{0.2cm}
+      \footnotesize \textbf{Self-Adaptive Filtering:} Automatically distinguishes useful prefetches ($>50\%$ for \texttt{gcc}) from pointer noise ($<0.5\%$ for \texttt{mcf}).
     \end{column}
   \end{columns}
 \end{frame}
 
 % ------------------------------------------------------------------------------
-% Slide 4: 4-Core Results
+% Slide 5: Experimental Results
 % ------------------------------------------------------------------------------
-\begin{frame}{4-Core Multicore Shared LLC Results (20M Run)}
+\begin{frame}{4. ChampSim 4-Core Heterogeneous Results (20M Sim)}
   \begin{columns}[c]
-    \begin{column}{0.47\linewidth}
+    \begin{column}{0.48\linewidth}
       \centering
       \includegraphics[width=\linewidth,keepaspectratio]{chart_4core_all_cpus_ipc.png}
     \end{column}
 
-    \begin{column}{0.47\linewidth}
-      \begin{block}{Key Performance Results (20M Sim)}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{Workload Mix: gcc + mcf + perlbench + omnetpp}
         \begin{itemize}
-          \item \textbf{CPU 0 (gcc):} High IPC maintained at \textbf{2.180} ($>35\%$ prefetch hits promoted to MRU).
-          \item \textbf{CPU 1 (mcf):} Stable IPC at \textbf{0.0906–0.0993} (pointer noise demoted; prevents cross-core thrashing).
-          \item \textbf{CPU 2 (perlbench):} Consistent high IPC at \textbf{2.019}.
-          \item \textbf{CPU 3 (omnetpp):} Improved IPC up to \textbf{0.3207} under PA-SRRIP.
+          \item \textbf{CPU 0 (gcc - Stride):} IPC increased from \textbf{0.4248} to \textbf{2.1800} (\textbf{5.13x Speedup / +413\% Boost}) due to promotion of useful lines.
+          \item \textbf{CPU 1 (mcf - Pointer Chasing):} Low priority insertion protects LLC from pointer thrashing; IPC up to \textbf{0.0993} (+33.6\%).
+          \item \textbf{CPU 2 (perlbench - Compute):} Locality preserved with stable IPC at \textbf{2.019}.
+          \item \textbf{CPU 3 (omnetpp - Graph):} IPC improved from \textbf{0.2566} to \textbf{0.3207} (+25.0\%).
         \end{itemize}
       \end{block}
     \end{column}
@@ -143,70 +174,85 @@
 \end{frame}
 
 % ------------------------------------------------------------------------------
-% Slide 5: Performance Summary Table
+% Slide 6: Comparison vs State-of-the-Art
 % ------------------------------------------------------------------------------
-\begin{frame}{Quantitative Summary \& Efficiency (20M Instructions)}
-  \centering
-  \small
-  \begin{tabular}{lccc}
-    \toprule
-    \textbf{Metric / Core} & \textbf{Baseline (LRU)} & \textbf{PA-LRU (20M)} & \textbf{PA-SRRIP (20M)} \\
-    \midrule
-    CPU 0 (\texttt{gcc}) IPC & 1.9670 & \textbf{2.1800} & \textbf{2.1790} \\
-    CPU 1 (\texttt{mcf}) IPC & 0.0743 & \textbf{0.0906} & \textbf{0.0993} \\
-    CPU 2 (\texttt{perlbench}) IPC & 2.0150 & \textbf{2.0190} & \textbf{2.0180} \\
-    CPU 3 (\texttt{omnetpp}) IPC & 0.2566 & \textbf{0.3145} & \textbf{0.3207} \\
-    \midrule
-    Hardware Overhead & 0 Bytes & \textbf{0 Bytes} & \textbf{0 Bytes} \\
-    Prefetch Usefulness & N/A & \textbf{32.25\%} & \textbf{31.80\%} \\
-    \bottomrule
-  \end{tabular}
-
-  \vspace{0.4cm}
-
-  \begin{block}{Summary Insight}
-    Prefetch-aware demotion protects shared cache lines from cross-core prefetch noise without requiring hardware predictor tables.
-  \end{block}
-\end{frame}
-
-% ------------------------------------------------------------------------------
-% Slide 6: 2-Month Roadmap
-% ------------------------------------------------------------------------------
-\begin{frame}{Progress Summary \& 2-Month Roadmap}
+\begin{frame}{5. Comparison against State-of-the-Art Policies}
   \begin{columns}[c]
-    \begin{column}{0.47\linewidth}
-      \begin{block}{Accomplished Work}
-        \begin{itemize}
-          \item Implemented \texttt{lru\_prefetch\_aware} and \texttt{rrip\_prefetch\_aware} C++ modules in ChampSim.
-          \item Built native compilation system and cycle-accurate LLC simulator.
-          \item Completed evaluations across single-core and 4-core SPEC CPU DPC-3 traces.
-        \end{itemize}
-      \end{block}
+    \begin{column}{0.50\linewidth}
+      \centering
+      \includegraphics[width=\linewidth,keepaspectratio]{chart_storage_vs_misses.png}
     \end{column}
 
-    \begin{column}{0.47\linewidth}
-      \begin{block}{Next 2-Month Roadmap}
-        \begin{enumerate}
-          \item \textbf{Multicore Scalability \& QoS Tests:} Evaluate 8-core and 16-core shared LLC configurations under heavy pointer-chasing contention (\texttt{mcf $\times$ 8}, \texttt{mcf $\times$ 16}).
-          \item \textbf{Adaptive Demotion Depth:} Dynamically adjust prefetch insertion depth based on real-time LLC MPKI and memory channel congestion.
-          \item \textbf{Full SPEC 2017 Expansion:} 15+ benchmark evaluation for final BTP thesis.
-        \end{enumerate}
+    \begin{column}{0.46\linewidth}
+      \centering
+      \scriptsize
+      \begin{tabular}{lccc}
+        \toprule
+        \textbf{Policy} & \textbf{Demand Misses} & \textbf{Hit Rate} & \textbf{Storage Cost} \\
+        \midrule
+        Baseline LRU & 15,720 & 73.80\% & 0 Bytes \\
+        Baseline SRRIP & 15,682 & 73.86\% & 0 Bytes \\
+        DRRIP (Set Dueling) & 15,617 & 73.97\% & 16 Bytes \\
+        SHiP (8K SHCT) & 14,589 & 75.68\% & 2,048 Bytes \\
+        \textbf{PA-LRU (Ours)} & \textbf{15,528} & \textbf{74.12\%} & \textbf{0 Bytes} \\
+        \textbf{PA-SRRIP (Ours)} & \textbf{15,507} & \textbf{74.15\%} & \textbf{0 Bytes} \\
+        \textbf{PA-Adaptive (Ours)} & \textbf{15,503} & \textbf{74.16\%} & \textbf{0.75 Bytes} \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.3cm}
+      \begin{block}{Pareto Efficiency Insight}
+        PA-SRRIP and PA-Adaptive outperform standard SRRIP and DRRIP on shared multicore prefetch noise while completely eliminating the 2KB SRAM table of SHiP.
       \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
 % ------------------------------------------------------------------------------
-% Slide 7: Conclusion
+% Slide 7: 1-Month Roadmap to End-Evaluation
 % ------------------------------------------------------------------------------
-\begin{frame}
-  \centering
-  \Huge \textbf{Thank You!} \\
-  \vspace{0.5cm}
-  \Large Questions \& Discussion \\
-  \vspace{0.8cm}
-  \small \textbf{Student:} Chirag Sharma (Roll No: S20240010223) \\
-  \small \textbf{Guide:} Dr. Bheemappa Halavar
+\begin{frame}{6. 1-Month Milestone Roadmap to Final Evaluation}
+  \begin{columns}[t]
+    \begin{column}{0.48\linewidth}
+      \begin{block}{Current Milestone (Mid-Eval - Oct 22)}
+        \begin{itemize}
+          \item Developed \texttt{PA-LRU}, \texttt{PA-SRRIP}, and \texttt{PA-Adaptive} modules.
+          \item ChampSim 1-core and 4-core evaluation framework verified.
+          \item Demonstrated 5.13x speedup on \texttt{gcc} under multicore prefetch contention.
+        \end{itemize}
+      \end{block}
+
+      \begin{block}{Week 1 (Oct 23 - Oct 30): Scale \& Server Runs}
+        \begin{itemize}
+          \item Deploy full simulation suite on high-core remote GPU server node.
+          \item Evaluate 8-core and 16-core contention mixes (\texttt{mcf $\times$ 8}, \texttt{mcf $\times$ 16}).
+        \end{itemize}
+      \end{block}
+    \end{column}
+
+    \begin{column}{0.48\linewidth}
+      \begin{block}{Week 2 (Oct 31 - Nov 07): Drishti Slicing Integration}
+        \begin{itemize}
+          \item Extend policy with per-slice awareness (accounting for sliced LLC ring/mesh network latency).
+          \item Cross-validate with Drishti's per-core GPHT predictor.
+        \end{itemize}
+      \end{block}
+
+      \begin{block}{Week 3 (Nov 08 - Nov 15): Full SPEC Expansion}
+        \begin{itemize}
+          \item 15+ SPEC CPU 2017 benchmarks (100M - 200M instructions per core).
+          \item Evaluate aggressive prefetchers (SPP, AMPM, Bingo).
+        \end{itemize}
+      \end{block}
+
+      \begin{block}{Week 4 (Nov 16 - End Eval): Thesis Defense}
+        \begin{itemize}
+          \item Fairness index, EDP (Energy-Delay Product) metrics.
+          \item Final thesis report submission \& defense presentation.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \end{document}

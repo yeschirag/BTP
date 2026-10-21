@@ -39,7 +39,8 @@ enum class PolicyType {
     DRRIP,
     SHIP,
     PREFETCH_AWARE_LRU,
-    PREFETCH_AWARE_SRRIP
+    PREFETCH_AWARE_SRRIP,
+    PREFETCH_AWARE_ADAPTIVE
 };
 
 std::string policy_name(PolicyType p) {
@@ -50,6 +51,7 @@ std::string policy_name(PolicyType p) {
         case PolicyType::SHIP: return "SHiP";
         case PolicyType::PREFETCH_AWARE_LRU: return "Prefetch-Aware LRU";
         case PolicyType::PREFETCH_AWARE_SRRIP: return "Prefetch-Aware SRRIP";
+        case PolicyType::PREFETCH_AWARE_ADAPTIVE: return "PA-Adaptive SRRIP";
     }
     return "Unknown";
 }
@@ -81,6 +83,9 @@ public:
 
     // SHiP State
     std::vector<uint8_t> SHCT; // Signature History Counter Table (2-bit counters, size 8192)
+
+    // PA-Adaptive State: 6-bit saturating counter (0..63, initial 32)
+    int confidence_counter = 32;
 
     MultiPolicyLLC(uint32_t num_sets, uint32_t num_ways, PolicyType pol)
         : sets(num_sets), ways(num_ways), policy(pol) {
@@ -135,13 +140,16 @@ public:
             CacheLine& line = cache[set][hit_way];
             if (req.type != AccessType::PREFETCH && line.is_prefetched) {
                 stats.prefetch_promoted++;
+                if (policy == PolicyType::PREFETCH_AWARE_ADAPTIVE) {
+                    confidence_counter = std::min(63, confidence_counter + 3);
+                }
                 line.is_prefetched = false; // Promoted line becomes demand
             }
 
             // Policy Hit Updates
             if (policy == PolicyType::BASELINE_LRU || policy == PolicyType::PREFETCH_AWARE_LRU) {
                 line.last_used_cycle = global_cycle;
-            } else if (policy == PolicyType::BASELINE_SRRIP || policy == PolicyType::PREFETCH_AWARE_SRRIP || policy == PolicyType::DRRIP) {
+            } else if (policy == PolicyType::BASELINE_SRRIP || policy == PolicyType::PREFETCH_AWARE_SRRIP || policy == PolicyType::DRRIP || policy == PolicyType::PREFETCH_AWARE_ADAPTIVE) {
                 line.rrpv = 0;
             } else if (policy == PolicyType::SHIP) {
                 line.rrpv = 0;
@@ -163,6 +171,10 @@ public:
                 if (line.rrpv == 3 && SHCT[line.signature] > 0) {
                     SHCT[line.signature]--;
                 }
+            }
+            // If victim was an un-promoted prefetch under PA-Adaptive, penalize counter
+            if (policy == PolicyType::PREFETCH_AWARE_ADAPTIVE && line.valid && line.is_prefetched) {
+                confidence_counter = std::max(0, confidence_counter - 1);
             }
 
             line.valid = true;
@@ -187,6 +199,8 @@ public:
                     line.rrpv = 2;
                 } else if (policy == PolicyType::PREFETCH_AWARE_SRRIP) {
                     line.rrpv = 3; // Distant priority
+                } else if (policy == PolicyType::PREFETCH_AWARE_ADAPTIVE) {
+                    line.rrpv = (confidence_counter >= 32) ? 2 : 3;
                 } else if (policy == PolicyType::DRRIP) {
                     line.rrpv = get_drrip_rrpv(set);
                 } else if (policy == PolicyType::SHIP) {
@@ -197,7 +211,7 @@ public:
                 line.is_prefetched = false;
                 if (policy == PolicyType::BASELINE_LRU || policy == PolicyType::PREFETCH_AWARE_LRU) {
                     line.last_used_cycle = global_cycle;
-                } else if (policy == PolicyType::BASELINE_SRRIP || policy == PolicyType::PREFETCH_AWARE_SRRIP) {
+                } else if (policy == PolicyType::BASELINE_SRRIP || policy == PolicyType::PREFETCH_AWARE_SRRIP || policy == PolicyType::PREFETCH_AWARE_ADAPTIVE) {
                     line.rrpv = 2;
                 } else if (policy == PolicyType::DRRIP) {
                     line.rrpv = get_drrip_rrpv(set);
@@ -410,7 +424,8 @@ int main() {
         PolicyType::DRRIP,
         PolicyType::SHIP,
         PolicyType::PREFETCH_AWARE_LRU,
-        PolicyType::PREFETCH_AWARE_SRRIP
+        PolicyType::PREFETCH_AWARE_SRRIP,
+        PolicyType::PREFETCH_AWARE_ADAPTIVE
     };
 
     std::ofstream out_md("results_multi_run_summary.md");
