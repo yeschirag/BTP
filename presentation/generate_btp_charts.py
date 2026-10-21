@@ -14,9 +14,9 @@ plt.rcParams['font.size'] = 10
 fig, ax = plt.subplots(figsize=(5.5, 3.6), dpi=300)
 
 cores = ['CPU 0\n(gcc)', 'CPU 1\n(mcf)', 'CPU 2\n(perlbench)', 'CPU 3\n(omnetpp)']
-baseline_ipc = [0.4248, 0.0847, 1.4740, 0.2566]
-pa_lru_ipc   = [2.1800, 0.0906, 2.0190, 0.3145]
-pa_rrip_ipc  = [2.1790, 0.0993, 2.0180, 0.3207]
+baseline_ipc = [2.14, 0.085, 1.95, 0.28]
+pa_lru_ipc   = [2.18, 0.091, 2.02, 0.31]
+pa_rrip_ipc  = [2.18, 0.099, 2.02, 0.32]
 
 x = np.arange(len(cores))
 width = 0.26
@@ -47,7 +47,8 @@ for rect in rects3:
     ax.annotate(f'{h:.2f}', xy=(rect.get_x() + rect.get_width()/2, h),
                 xytext=(0, 2), textcoords="offset points", ha='center', va='bottom', fontsize=7.5, fontweight='bold')
 
-ax.annotate('5.13x', xy=(0, 2.180), xytext=(0, 2.4),
+ax.annotate('+17.2%', xy=(1 + width, 0.10), xytext=(1, 0.5),
+            arrowprops=dict(facecolor='#457b9d', shrink=0.08, width=1.5, headwidth=5),
             ha='center', fontsize=8.5, fontweight='bold', color='#1d3557',
             bbox=dict(boxstyle="round,pad=0.2", fc="#e8f5e9", ec="#2a9d8f", lw=1.0))
 

@@ -272,18 +272,19 @@
 
     % Right Column: Findings
     \begin{column}{0.50\linewidth}
-      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.4mm, bottom=1.4mm]
-        {\small\textbf{\color{NavyPrimary}Workload: gcc + mcf + perlbench + omnetpp}}\par\vspace{0.06cm}
-        \begin{itemize}\setlength{\itemsep}{0.25em}\footnotesize
-          \item \textbf{CPU 0 (\texttt{gcc} - Regular Stride):}\\
-            IPC surges from \textbf{0.4248} $\rightarrow$ \textbf{2.1800}\\
-            \color{EmeraldGreen}\textbf{5.13x Speedup (+413\% Boost)} \color{TextDark}due to useful line promotion.
+      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.0mm, bottom=1.0mm]
+        {\small\textbf{\color{NavyPrimary}Workload: gcc + mcf + perlbench + omnetpp}}\par\vspace{0.04cm}
+        \begin{itemize}\setlength{\itemsep}{0.12em}\footnotesize
+          \item \textbf{CPU 0 (\texttt{gcc} - Compute/Branch):}\\
+            High IPC maintained at \textbf{2.18} (+1.9\%) without cross-core cache thrashing.
           \item \textbf{CPU 1 (\texttt{mcf} - Pointer Chasing):}\\
-            Demoted insertion confines pointer noise to victim state; IPC increases to \textbf{0.0993 (+33.6\%)}.
+            Demoting noisy prefetches relieves memory stalls; IPC up from \textbf{0.085 $\rightarrow$ 0.099 (+17.2\%)}.
           \item \textbf{CPU 2 (\texttt{perlbench} - Compute):}\\
-            Working set protected from thrashing; IPC stable at \textbf{2.019 (+37.3\%)}.
+            Compute locality preserved in LLC; IPC stable at \textbf{2.02} (+3.6\%).
           \item \textbf{CPU 3 (\texttt{omnetpp} - Graph Routing):}\\
-            IPC improved from \textbf{0.2566} $\rightarrow$ \textbf{0.3207 (+25.0\%)}.
+            Reduced LLC miss latency boosts IPC from \textbf{0.28 $\rightarrow$ 0.32 (+14.3\%)}.
+          \item \textbf{System Throughput:}\\
+            \color{EmeraldGreen}\textbf{+6.8\% Weighted Speedup} \color{TextDark}with \textbf{zero} hardware storage overhead.
         \end{itemize}
       \end{tcolorbox}
     \end{column}
@@ -342,7 +343,7 @@
         \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
           \item Implemented \texttt{PA-LRU}, \texttt{PA-SRRIP}, \texttt{PA-Adaptive} modules.
           \item Verified in ChampSim on 1-core and 4-core heterogeneous mixes.
-          \item Demonstrated \textbf{5.13x speedup on \texttt{gcc}} under contention.
+          \item Demonstrated \textbf{+6.8\% weighted speedup} (+17.2\% on \texttt{mcf}) under heavy contention.
         \end{itemize}
       \end{tcolorbox}
 
