@@ -35,7 +35,14 @@ SIM_INST=20000000
 
 echo "[*] Simulation Parameters: Warmup=${WARMUP}, SimInstructions=${SIM_INST}"
 
-# 1. Build Binaries if missing
+# 1. Sync replacement modules into ChampSim/replacement/
+echo "[*] Syncing replacement modules into ChampSim/replacement/..."
+mkdir -p replacement/lru_prefetch_aware replacement/rrip_prefetch_aware replacement/rrip_prefetch_adaptive
+cp -f "${ROOT_DIR}/src/lru_prefetch_aware."* replacement/lru_prefetch_aware/ 2>/dev/null || true
+cp -f "${ROOT_DIR}/src/rrip_prefetch_aware."* replacement/rrip_prefetch_aware/ 2>/dev/null || true
+cp -f "${ROOT_DIR}/src/rrip_prefetch_adaptive."* replacement/rrip_prefetch_adaptive/ 2>/dev/null || true
+
+# 2. Build Binaries if missing
 echo "[*] Verifying & Building Binaries..."
 for cfg in champsim_4core_baseline champsim_4core_pa_rrip champsim_4core_pa_adaptive champsim_4core_pa_ampm; do
     if [ ! -f "bin/${cfg}" ]; then
