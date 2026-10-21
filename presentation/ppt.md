@@ -43,17 +43,17 @@
 
 ### On Slide:
 - **State-of-the-Art Papers Reviewed:**
-  - **Drishti (MICRO 2025):** Slicing-aware framework using per-core GPHT tables and dynamic sampled cache selection. *(Clarified with authors: Drishti is an architectural framework, not a standalone replacement policy; replacement policies must handle prefetch vs. demand).*
-  - **PACMan (IEEE CAL 2023):** Prefetch-aware cache management via accuracy tracking counters.
+  - **PACMan (IEEE CAL 2023):** Prefetch-aware cache management via dual queues and accuracy tracking counters.
   - **DRRIP (ISCA 2010):** Set-dueling dynamic RRIP using 10-bit PSEL counters.
   - **SHiP (ISCA 2011):** Signature-based hit predictor requiring an **8,192-entry SHCT table (2 KB of dedicated SRAM)**.
+  - **Hawkeye (ISCA 2016):** Learns optimal cache replacement but requires extensive hardware history tables.
 - **Identified Research Gaps:**
-  1. *Heavy Storage Budget:* Existing solutions require thousands of bits of SRAM tables or set-dueling logic.
+  1. *Heavy Storage Budget:* Existing predictive solutions require thousands of bits of SRAM tables or set-dueling logic.
   2. *Hardware Complexity:* Predictors require training periods, hashing logic, and latency overheads.
   3. *Our Goal:* Achieve prefetch resilience with **ZERO hardware storage overhead** (0 extra metadata bits) across heterogeneous multicore workloads.
 
 ### Speaker Notes / What to Say:
-> *"During my literature review, I studied Drishti from MICRO 2025, PACMan from CAL 2023, and classic policies like DRRIP and SHiP. While SHiP achieves good hit prediction, it requires an 8,192-entry signature table—consuming 2 Kilobytes of dedicated SRAM. My research question was: Can we achieve comparable or superior prefetch resilience with ZERO hardware overhead by modifying insertion and promotion priorities directly?"*
+> *"During my literature review, I studied PACMan from CAL 2023, classic policies like DRRIP and SHiP, and modern predictors like Hawkeye. While SHiP achieves good hit prediction, it requires an 8,192-entry signature table—consuming 2 Kilobytes of dedicated SRAM. My research question was: Can we achieve comparable or superior prefetch resilience with ZERO hardware overhead by modifying insertion and promotion priorities directly?"*
 
 ---
 
@@ -124,21 +124,22 @@
   - Working C++ modules for `lru_prefetch_aware`, `rrip_prefetch_aware`, and `rrip_prefetch_adaptive`.
   - ChampSim compilation and execution framework verified.
   - Cycle-accurate proof of 5.13x speedup on heterogeneous multicore mixes.
-- **Week 1 (Oct 22 - Oct 28): Multicore Scaling on Remote GPU/Server Node:**
+- **Week 1 (Oct 23 - Oct 30): Multicore Scaling on Remote Cluster Node:**
   - Execute 8-core and 16-core shared LLC simulations under heavy noise contention (`mcf x 8`, `mcf x 16`).
-  - Evaluate aggressive prefetchers (SPP, AMPM, Bingo).
-- **Week 2 (Oct 29 - Nov 05): Drishti Slicing & Interconnect Integration:**
-  - Incorporate per-slice prefetch awareness accounting for ring/mesh non-uniform cache access (NUCA) latencies.
-  - Integrate with per-core GPHT reuse predictors.
-- **Week 3 (Nov 06 - Nov 12): Full SPEC CPU 2017 Expansion:**
+  - Characterize pointer thrashing and victim eviction dynamics.
+- **Week 2 (Oct 31 - Nov 07): Multicore Fairness & Dynamic Threshold Tuning:**
+  - Quantify Weighted Speedup and Maximum Slowdown (Fairness Index).
+  - Characterize cross-core memory bandwidth contention.
+  - Tune dynamic adaptive counter threshold based on runtime bandwidth usage.
+- **Week 3 (Nov 08 - Nov 15): Full SPEC CPU 2017 Expansion:**
   - Scale evaluation across 15+ SPEC CPU traces (`lbm`, `milc`, `namd`, `bzip2`, `xalancbmk`).
-  - Conduct long runs (100M - 200M instructions per core).
-- **Week 4 (Nov 13 - End Eval): Thesis Defense & Deliverables:**
+  - Stress test against aggressive prefetchers (SPP, AMPM, Bingo).
+- **Week 4 (Nov 16 - End Eval): Thesis Defense & Deliverables:**
   - Comprehensive energy-delay product (EDP), fairness index, and multicore throughput metrics.
-  - Final thesis draft and research paper submission.
+  - Final thesis report submission and oral defense presentation.
 
 ### Speaker Notes / What to Say:
-> *"Looking ahead to our End-Evaluation in exactly one month, I have defined a clear, structured 4-week execution plan. In Week 1, we will scale our simulations to 8-core and 16-core configurations using our high-performance GPU server node. In Week 2, we will integrate per-slice interconnect latency inspired by Drishti. In Week 3, we will run comprehensive 200M-instruction benchmarks across 15+ SPEC CPU traces. In Week 4, we will finalize our Energy-Delay Product calculations, complete the BTP thesis, and submit our research paper. Thank you, and I look forward to your questions."*
+> *"Looking ahead to our End-Evaluation in exactly one month, I have defined a clear, structured 4-week execution plan. In Week 1, we will scale our simulations to 8-core and 16-core configurations using our high-performance GPU server node. In Week 2, we will evaluate multicore fairness metrics (weighted speedup and maximum slowdown) and tune our adaptive threshold. In Week 3, we will run comprehensive benchmarks across 15+ SPEC CPU traces with aggressive prefetchers like SPP and AMPM. In Week 4, we will finalize our Energy-Delay Product calculations, complete the BTP thesis, and present our final defense. Thank you, and I look forward to your questions."*
 
 ---
 
@@ -147,8 +148,8 @@
 1. **Q: Why not just turn off the prefetcher when accuracy is low?**
    - *A: Throttling or disabling the prefetcher requires a separate prefetch accuracy predictor and feedback bus between the LLC and L2/L1 prefetchers, adding interconnect traffic and latency. Our policy acts locally at the LLC replacement level: even if an aggressive prefetcher sends bad blocks, they are harmlessly dropped at the victim position without polluting demand lines.*
 
-2. **Q: How does this interact with Drishti from MICRO 2025?**
-   - *A: We discussed this with Drishti's author, Prerna. Drishti provides per-core GPHT tables and sampled cache selection across sliced LLCs, but relies on an underlying replacement policy. Our prefetch-resilient policy complements Drishti perfectly as the underlying replacement engine.*
+2. **Q: How does your policy ensure fairness between cores in a multicore system?**
+   - *A: In standard LRU/SRRIP, a core with inaccurate prefetches monopolizes LLC capacity and evicts demand blocks of co-running compute cores. By demoting prefetches to victim state ($RRPV=3$), inaccurate streams are confined to their own lines and cannot steal ways from co-running cores, natively preserving multicore fairness without complex per-core partitioning tables.*
 
 3. **Q: What is the exact hardware overhead of PA-SRRIP and PA-Adaptive?**
    - *A: Standard PA-SRRIP has strictly 0 extra bits—it reuses the existing 2-bit RRPV per line and the request packet's `access_type::PREFETCH` flag. PA-Adaptive adds a single 6-bit counter (0.75 Bytes) for the entire LLC to track prefetch usefulness.*
