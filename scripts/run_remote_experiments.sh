@@ -14,23 +14,23 @@ RESULTS_DIR="${ROOT_DIR}/results_remote"
 mkdir -p "${RESULTS_DIR}"
 
 # Auto-discover local user-space libraries (~/localdeps, ~/.local)
-LOCAL_LIB_PATHS=$(find "${HOME}/localdeps" "${HOME}/.local" -type d \( -name "lib" -o -name "lib64" \) 2>/dev/null | tr '\n' ':')
+LOCAL_LIB_PATHS=$(find "${HOME}/localdeps" "${HOME}/.local" -type d \( -name "lib" -o -name "lib64" -o -name "stublib" \) 2>/dev/null | tr '\n' ':')
 LOCAL_INC_PATHS=$(find "${HOME}/localdeps" "${HOME}/.local" -type d -name "include" 2>/dev/null | tr '\n' ':')
 
-export LIBRARY_PATH="${LOCAL_LIB_PATHS}${HOME}/localdeps/lib:${HOME}/localdeps/lib64:${HOME}/.local/lib:${LIBRARY_PATH}"
-export LD_LIBRARY_PATH="${LOCAL_LIB_PATHS}${HOME}/localdeps/lib:${HOME}/localdeps/lib64:${HOME}/.local/lib:${LD_LIBRARY_PATH}"
+export LIBRARY_PATH="${LOCAL_LIB_PATHS}${HOME}/localdeps/stublib:${HOME}/localdeps/lib:${HOME}/localdeps/lib64:${HOME}/.local/lib:${LIBRARY_PATH}"
+export LD_LIBRARY_PATH="${LOCAL_LIB_PATHS}${HOME}/localdeps/stublib:${HOME}/localdeps/lib:${HOME}/localdeps/lib64:${HOME}/.local/lib:${LD_LIBRARY_PATH}"
 export CPLUS_INCLUDE_PATH="${LOCAL_INC_PATHS}${HOME}/localdeps/include:${HOME}/.local/include:${CPLUS_INCLUDE_PATH}"
 export C_INCLUDE_PATH="${LOCAL_INC_PATHS}${HOME}/localdeps/include:${HOME}/.local/include:${C_INCLUDE_PATH}"
 export PATH="${HOME}/localdeps/bin:${HOME}/.local/bin:${PATH}"
 
-# Ensure ChampSim/Makefile includes localdeps
+# Ensure ChampSim/Makefile includes localdeps and stublib
 python3 -c "
 import os
 mk = '${CHAMPSIM_DIR}/Makefile'
 if os.path.exists(mk):
     with open(mk, 'r') as f: s = f.read()
-    if 'localdeps' not in s:
-        s = s.replace('override LDFLAGS  +=', 'override LDFLAGS  += -L' + os.path.expanduser('~/localdeps/lib') + ' -L' + os.path.expanduser('~/localdeps/lib64') + ' -L' + os.path.expanduser('~/.local/lib') + ' ')
+    if 'stublib' not in s:
+        s = s.replace('override LDFLAGS  +=', 'override LDFLAGS  += -L' + os.path.expanduser('~/localdeps/stublib') + ' -L' + os.path.expanduser('~/localdeps/lib') + ' -L' + os.path.expanduser('~/localdeps/lib64') + ' -L' + os.path.expanduser('~/.local/lib') + ' ')
         s = s.replace('override CPPFLAGS +=', 'override CPPFLAGS += -I' + os.path.expanduser('~/localdeps/include') + ' -I' + os.path.expanduser('~/.local/include') + ' ')
         with open(mk, 'w') as f: f.write(s)
 " 2>/dev/null || true
