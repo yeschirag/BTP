@@ -264,5 +264,5 @@ In an unmanaged overnight run, Core 0 (`gcc`) finished 20M instructions in 9.5M 
 
 ---
 
-## CHAPTER 12: The 6-Minute Oral Defense Script
+## CHAPTER 12: The 6-Minute Presentation Script (Slide-by-Slide)
 *(Follow the exact slide-by-slide word-for-word transcript in the PDF or Chapter 12 of the survival guide!)*
