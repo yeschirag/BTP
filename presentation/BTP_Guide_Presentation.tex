@@ -380,43 +380,4 @@
   \end{columns}
 \end{frame}
 
-% -----------------------------------------------------------------------------
-% Slide 8 (Backup): Simulation Environment & Parameters
-% -----------------------------------------------------------------------------
-\begin{frame}{Backup: ChampSim Cycle-Accurate Simulation Setup}
-  \begin{columns}[t]
-    \begin{column}{0.49\linewidth}
-      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.4mm, bottom=1.4mm]
-        {\small\textbf{\color{NavyPrimary}Processor Pipeline Configuration}}\par\vspace{0.06cm}
-        \begin{itemize}\setlength{\itemsep}{0.18em}\scriptsize
-          \item \textbf{Cores:} 4-core Heterogeneous Out-of-Order (OoO) @ 4.0 GHz
-          \item \textbf{Execution Engine:} 6-wide fetch/decode, 256-entry ROB
-          \item \textbf{Branch Predictor:} Hashed Perceptron + 4K-entry BTB
-          \item \textbf{L1I / L1D Caches:} 32 KB each, 8-way associative, 4-cycle latency
-          \item \textbf{L2 Cache:} 512 KB private per core, 8-way, 10-cycle latency
-        \end{itemize}
-      \end{tcolorbox}
-    \end{column}
-
-    \begin{column}{0.49\linewidth}
-      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.4mm, bottom=1.4mm]
-        {\small\textbf{\color{NavyPrimary}Shared LLC \& Memory Subsystem}}\par\vspace{0.06cm}
-        \begin{itemize}\setlength{\itemsep}{0.18em}\scriptsize
-          \item \textbf{Shared LLC:} 8 MB shared, 16-way associative, 64B line size
-          \item \textbf{LLC Latency:} 20-cycle hit latency, non-inclusive
-          \item \textbf{DRAM:} DDR4-2400 MHz, 1 channel, 64-bit width, 12.8 GB/s
-          \item \textbf{DRAM Timings:} $t_{CAS}-t_{RCD}-t_{RP} = 14-14-14$
-          \item \textbf{Workloads:} SPEC CPU 2006/2017 pinned SimPoint traces
-        \end{itemize}
-      \end{tcolorbox}
-    \end{column}
-  \end{columns}
-
-  \vspace{0.18cm}
-  \begin{tcolorbox}[boxrule=0.8pt, arc=1.5mm, colback=HighlightBg, colframe=HighlightBorder, top=1.2mm, bottom=1.2mm]
-    \centering\scriptsize
-    \textbf{Trace Assignment:} CPU 0: \texttt{403.gcc} \quad $\vert$ \quad CPU 1: \texttt{429.mcf} \quad $\vert$ \quad CPU 2: \texttt{400.perlbench} \quad $\vert$ \quad CPU 3: \texttt{471.omnetpp}
-  \end{tcolorbox}
-\end{frame}
-
 \end{document}
