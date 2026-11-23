@@ -1,0 +1,79 @@
+BTP FINAL VIVA DEFENSE - SCRIPT & CHEAT SHEET
+Chirag Sharma | Guide: Dr. Bheemappa Halavar | IIIT Sri City
+==================================================
+
+[SLIDE 1: TITLE SLIDE - 40s]
+"Good morning respected committee members and my guide Dr. Halavar. Today I present my BTP project: 'Prefetch-Aware Cache Replacement Policies for Multicore Processors'. We address a critical memory hierarchy bottleneck: the destructive interference caused by speculative data prefetchers in shared Last-Level Caches, and propose two zero-overhead microarchitectural policies: PA-SRRIP and PA-Adaptive."
+
+[SLIDE 2: MOTIVATION & PREFETCHING PARADOX - 60s]
+"Modern multicore architectures face a 200 to 250 cycle DRAM latency wall. Hardware prefetchers attempt to hide this by fetching blocks ahead of demand. In streaming workloads like gcc, prefetch accuracy exceeds 50%, speeding up execution. But in pointer-chasing, graph, or irregular workloads like mcf, accuracy drops below 1%. In a shared LLC under standard LRU, these inaccurate speculative lines enter at the MRU position, prematurely evicting latency-critical demand data of other cores. This cache pollution severely degrades multicore fairness and throughput."
+
+[SLIDE 3: LITERATURE REVIEW & GAPS - 60s]
+"Prior works like DRRIP protect against streaming thrashing, but treat prefetches and demands identically. SOTA predictors like SHiP or Hawkeye demand 2 to 8 Kilobytes of dedicated SRAM tables to track PC signatures or Bloom filters. This adds silicon area, dynamic energy, and timing pressure. Our research gap: How can we eliminate prefetch pollution with strictly ZERO additional SRAM storage overhead?"
+
+[SLIDE 4: THE ALGORITHM FLOWCHART - 75s (CRUCIAL!)]
+"Here is the microarchitectural decision logic of our proposed policy:
+1. When a transaction reaches the LLC, hardware inspects the interconnect transaction wire: packet.type == PREFETCH. We store 0 extra bits in the tag directory!
+2. On a TAG HIT: The line has proven its utility. Hit-Triggered Promotion sets its 2-bit RRPV to 0 (MRU), shielding it from eviction.
+3. On a TAG MISS: The controller searches the set for any way with RRPV == 3. If none is found, Set Aging increments all ways by +1 until at least one reaches 3.
+4. On CACHE FILL: Demand lines are inserted at RRPV = 2. But speculative prefetches are demoted to RRPV = 3 (Distant Re-reference). This makes inaccurate prefetches immediate eviction candidates on the very next miss!"
+
+[SLIDE 5: STATE TRANSITIONS & SET TRACE - 75s (CRUCIAL!)]
+"On the left is our 4-state RRPV machine: 0 is near-immediate, 1 is short, 2 is long, 3 is distant victim.
+On the right is a concrete 4-way set trace under mcf pointer noise:
+- Initially, demand lines D1 through D4 occupy Ways 0 to 3.
+- When prefetch P1 arrives, it inserts into Way 3 at RRPV = 3.
+- When noisy prefetches P2 and P3 follow, the controller scans for RRPV == 3, finds Way 3, and overwrites it.
+- This creates the Quarantine Effect: inaccurate prefetches repeatedly cannibalize only each other in Way 3, while demand lines in Ways 0 to 2 are never touched!"
+
+[SLIDE 6: PA-ADAPTIVE CONTROLLER - 60s]
+"To prevent over-filtering in benchmarks where prefetching is highly accurate, we introduce PA-Adaptive.
+- It uses a single 6-bit saturating counter (0 to 63, init 32) for the ENTIRE 8MB cache. That is 0.75 BYTES total overhead.
+- When a prefetch hits, we reward the counter by +3.
+- When an unused prefetch is evicted, we penalize by -1.
+- If counter >= 32, we enter Streaming Mode (prefetches insert at RRPV = 2). If counter < 32, we enter Filtering Mode (prefetches demoted to RRPV = 3).
+- This achieves dynamic phase adaptation with zero critical-path delay."
+
+[SLIDE 7: EXPERIMENTAL RESULTS - 60s]
+"We evaluated our policies on ChampSim across 4-core heterogeneous workloads (gcc, mcf, perlbench, omnetpp) with an 8MB 16-way LLC and AMPM prefetchers:
+- Memory-bound pointer-chasing mcf achieved a massive +24.4% IPC improvement over baseline LRU (0.0798 to 0.0993).
+- omnetpp gained +20.8% IPC.
+- High-IPC compute benchmark gcc maintained its full 2.18 IPC without degradation.
+- System-wide weighted speedup improved by +6.8%."
+
+[SLIDE 8: SOTA COMPARISON & PARETO DOMINANCE - 60s]
+"Comparing against SOTA:
+- Baseline LRU has high pollution.
+- Static RRIP protects against streaming but fails on pointer noise.
+- SHiP requires 2KB SRAM overhead.
+- Our PA-SRRIP and PA-Adaptive achieve superior or equivalent speedup with strictly 0 to 0.75 Bytes storage overhead. We occupy the Pareto-optimal frontier."
+
+[SLIDE 9: ARCHITECTURAL EXTENSIONS & ADD-ONS - 60s]
+"Looking at broader system-level extensions that complement this design:
+1. Bandwidth-Aware Throttling: Throttling prefetch generation when DRAM channel bus utilization exceeds 85%.
+2. Dynamic Way-Masking: Partitioning sets so prefetches can occupy at most K ways.
+3. Dead-Block PC Predictors: Bypassing LLC insertion completely for non-reusable lines.
+4. Cross-Core Prefetch Sharing: Snooping tags to deduplicate shared memory prefetches."
+
+[SLIDE 10: CONCLUSION - 30s]
+"In conclusion:
+1. Prefetch pollution in shared LLCs is a severe multicore performance bottleneck.
+2. We demonstrated that Demoted Initial Insertion (RRPV=3) quarantines speculative noise with 0 SRAM bits.
+3. PA-Adaptive provides dynamic closed-loop phase resilience with just 0.75 bytes.
+4. ChampSim validated +24.4% IPC on mcf and +6.8% system speedup.
+Thank you. I am now open to questions from the committee."
+
+==================================================
+HOSTILE PROFESSOR RAPID-FIRE ANSWERS:
+Q: Where do you store the prefetch bit?
+A: Zero bits stored in tags! Inspected on the bus wire (packet.type == PREFETCH) during cache fill.
+
+Q: Why RRPV=3 and not 2?
+A: Standard demand inserts at 2. Demoting prefetch to 3 makes it the immediate eviction candidate without requiring set aging.
+
+Q: What if the prefetch was useful?
+A: On its first demand hit, Hit-Triggered Promotion promotes it to RRPV=0 (MRU), protecting it just like a demand line.
+
+Q: What is the critical path overhead?
+A: Zero nanoseconds. Hits are served in standard 20 cycles; RRPV and 6-bit counter updates happen asynchronously on the fill path.
+==================================================
