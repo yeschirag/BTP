@@ -69,7 +69,15 @@ echo "[*] Verifying & Building Binaries..."
 for cfg in champsim_4core_baseline champsim_4core_pa_rrip champsim_4core_pa_adaptive champsim_4core_pa_ampm; do
     if [ ! -f "bin/${cfg}" ]; then
         echo "    Building bin/${cfg}..."
-        ./config.sh "${ROOT_DIR}/configs/${cfg}.json"
+        if [ -f "${ROOT_DIR}/configs/${cfg}.json" ]; then
+            CONFIG_PATH="${ROOT_DIR}/configs/${cfg}.json"
+        elif [ -f "${CHAMPSIM_DIR}/${cfg}.json" ]; then
+            CONFIG_PATH="${CHAMPSIM_DIR}/${cfg}.json"
+        else
+            echo "[-] Error: config for ${cfg} not found!"
+            exit 1
+        fi
+        ./config.sh "${CONFIG_PATH}"
         rm -f .csconfig/generated_environment.o
         make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu)" "bin/${cfg}"
     else

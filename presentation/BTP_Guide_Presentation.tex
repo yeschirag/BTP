@@ -12,10 +12,11 @@
 \usepackage{amsmath}
 \usepackage{colortbl}
 \usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, fit}
 \usepackage[most]{tcolorbox}
 
 % Page Margins (Generous margins, zero clipping)
-\setbeamersize{text margin left=0.7cm, text margin right=0.7cm}
+\setbeamersize{text margin left=0.6cm, text margin right=0.6cm}
 
 % -----------------------------------------------------------------------------
 % Elegant Modern Palette
@@ -24,6 +25,8 @@
 \definecolor{NavyAccent}{RGB}{28, 58, 112}     % Secondary accent navy
 \definecolor{SapphireBlue}{RGB}{2, 132, 199}   % High-visibility highlight
 \definecolor{EmeraldGreen}{RGB}{16, 150, 100}  % Speedup / success
+\definecolor{CrimsonRed}{RGB}{220, 38, 38}     % Victim / demotion
+\definecolor{AmberWarn}{RGB}{217, 119, 6}      % Intermediate / aging
 \definecolor{TextDark}{RGB}{20, 25, 35}        % Primary body text
 \definecolor{TextMuted}{RGB}{90, 100, 115}     % Secondary / captions
 \definecolor{BoxBg}{RGB}{247, 249, 252}        % Soft off-white box fill
@@ -62,7 +65,7 @@
 % Clean Minimalist Footer
 % -----------------------------------------------------------------------------
 \setbeamertemplate{footline}{%
-  \noindent\hspace{0.7cm}%
+  \noindent\hspace{0.6cm}%
   \begin{minipage}[c]{0.32\textwidth}%
     {\fontsize{7}{9}\selectfont\color{TextMuted}\textbf{Chirag Sharma} (S20240010223)}%
   \end{minipage}%
@@ -74,13 +77,13 @@
   \begin{minipage}[c]{0.24\textwidth}%
     \raggedleft{\fontsize{7}{9}\selectfont\color{NavyPrimary}\textbf{\insertframenumber{} / \inserttotalframenumber}}%
   \end{minipage}%
-  \hspace{0.7cm}%
+  \hspace{0.6cm}%
   \vspace{0.15cm}%
 }
 
 % Metadata
 \title{Zero-Overhead Prefetch-Resilient LLC Policy}
-\subtitle{B.Tech Project Mid-Evaluation Review}
+\subtitle{B.Tech Project Final Evaluation \& Viva Voce}
 \author{Chirag Sharma}
 \institute{IIIT Sri City}
 \date{\today}
@@ -103,7 +106,7 @@
       {\scriptsize \textbf{INDIAN INSTITUTE OF INFORMATION TECHNOLOGY, SRI CITY} \quad $\bullet$ \quad CSE}\\[0.18cm]
       {\Large \textbf{Zero-Overhead Prefetch-Resilient Last-Level Cache Policy}}\\[0.08cm]
       {\large \textbf{for Multicore Systems}}\\[0.18cm]
-      {\footnotesize \color{SapphireBlue}\textbf{B.Tech Project Mid-Evaluation Review \quad $\bullet$ \quad Academic Year 2026--2027}}
+      {\footnotesize \color{SapphireBlue}\textbf{B.Tech Project Final Evaluation \& Viva Voce \quad $\bullet$ \quad Academic Year 2026--2027}}
     \end{tcolorbox}
 
     \vspace{0.35cm}
@@ -145,11 +148,11 @@
         {\small\textbf{\color{NavyPrimary}Hardware Prefetching Paradox}}\par\vspace{0.06cm}
         \begin{itemize}\setlength{\itemsep}{0.2em}\footnotesize
           \item \textbf{Regular Streams (\texttt{gcc}, \texttt{lbm}):}\\
-            Spatial stride prefetchers achieve $>50\%$ accuracy, effectively hiding memory latency.
+            Spatial stride prefetchers achieve $>50\%$ accuracy, effectively hiding the 240-cycle DRAM latency.
           \item \textbf{Irregular Streams (\texttt{429.mcf}):}\\
-            Pointer chasing causes accuracy to drop below \textbf{$<1\%$}.
+            Unpredictable pointer chasing causes accuracy to collapse below \textbf{$<1\%$}.
           \item \textbf{Aggressive Speculation:}\\
-            Hardware prefetchers issue speculative requests without feedback on LLC utility.
+            Core-level prefetchers blindly issue speculative requests into the shared LLC without utility feedback.
         \end{itemize}
       \end{tcolorbox}
     \end{column}
@@ -160,11 +163,11 @@
         {\small\textbf{\color{NavyPrimary}Multicore Contention \& Blindness}}\par\vspace{0.06cm}
         \begin{itemize}\setlength{\itemsep}{0.2em}\footnotesize
           \item \textbf{Prefetch-Oblivious Policies:}\\
-            Standard LRU and SRRIP insert prefetched lines at high priority ($RRPV=2$ / MRU).
+            Standard LRU and SRRIP insert speculative prefetches with the same high priority as real demand loads.
           \item \textbf{Cross-Core Interference:}\\
-            Inaccurate prefetches evict valid demand blocks of co-running compute cores.
-          \item \textbf{Severe Throughput Loss:}\\
-            Unchecked prefetch thrashing causes up to \textbf{50\%+ IPC collapse} in shared multicore LLCs.
+            Inaccurate prefetches from memory-stalled cores evict valid demand blocks of co-running compute cores.
+          \item \textbf{Throughput Degradation:}\\
+            Unchecked prefetch noise causes severe IPC collapse across shared multicore LLCs.
         \end{itemize}
       \end{tcolorbox}
     \end{column}
@@ -173,12 +176,12 @@
   \vspace{0.15cm}
   \begin{tcolorbox}[boxrule=0.8pt, arc=1.5mm, colback=HighlightBg, colframe=HighlightBorder, top=1.4mm, bottom=1.4mm]
     \centering\footnotesize
-    \textbf{Research Goal:} \textit{Design an LLC policy that neutralizes prefetch pollution with \textbf{ZERO hardware storage overhead} (0 extra metadata bits).}
+    \textbf{Research Question:} \textit{Can we design an LLC policy that neutralizes prefetch pollution with \textbf{ZERO hardware storage overhead} (0 extra metadata bits)?}
   \end{tcolorbox}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-% Slide 3: Literature Review & Identified Gaps (Drishti Removed)
+% Slide 3: Literature Review & Identified Gaps
 % -----------------------------------------------------------------------------
 \begin{frame}{2. Literature Review \& Identified Research Gaps}
   \begin{columns}[t]
@@ -188,13 +191,13 @@
         {\small\textbf{\color{NavyPrimary}State-of-the-Art Approaches}}\par\vspace{0.06cm}
         \begin{itemize}\setlength{\itemsep}{0.2em}\footnotesize
           \item \textbf{PACMan (IEEE CAL 2023):}\\
-            Prefetch-aware cache management via dual queues; requires dedicated accuracy counters and sampling sets.
+            Dual-queue prefetch management; requires dedicated tracking counters and dynamic queue migration logic.
           \item \textbf{DRRIP (ISCA 2010):}\\
-            Dynamic RRIP using set-dueling PSEL counters; oblivious to prefetch vs.\ demand stream origin.
+            Dynamic RRIP via set-dueling PSEL counters; remains prefetch-oblivious (treats demand and prefetch identically).
           \item \textbf{SHiP (ISCA 2011):}\\
             Signature-based hit predictor; requires an \textbf{8,192-entry SHCT table (2,048 Bytes SRAM)}.
           \item \textbf{Hawkeye (ISCA 2016):}\\
-            Learns optimal cache replacement but requires extensive hardware history tables.
+            Learns Belady's MIN replacement; requires extensive history tables and OPTgen hardware engines.
         \end{itemize}
       \end{tcolorbox}
     \end{column}
@@ -207,7 +210,7 @@
           \item \textbf{High Storage Overhead:}\\
             Existing predictive policies require dedicated SRAM tables (2KB in SHiP) or complex sampling logic.
           \item \textbf{Lack of Zero-Overhead Resilience:}\\
-            Standard high-performance caches cannot afford extra SRAM tables solely for prefetch tracking.
+            Production caches cannot afford dedicated SRAM tables or backward core-throttling buses.
           \item \textbf{Our Proposed Solution:}\\
             A \textbf{Zero-Overhead} policy (\texttt{PA-SRRIP}) and a \textbf{0.75-Byte Self-Tuning} controller (\texttt{PA-Adaptive}) that eliminates prefetch pollution right at insertion.
         \end{enumerate}
@@ -217,52 +220,221 @@
 \end{frame}
 
 % -----------------------------------------------------------------------------
-% Slide 4: Proposed Policy Architecture
+% Slide 4: Proposed Algorithm: Complete Flowchart & Microarchitectural Decision Logic
 % -----------------------------------------------------------------------------
-\begin{frame}{3. Proposed Architecture: PA-SRRIP \& PA-Adaptive}
-  \begin{columns}[c]
-    % Left Column: Architecture
-    \begin{column}{0.52\linewidth}
-      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.4mm, bottom=1.4mm]
-        {\small\textbf{\color{NavyPrimary}Dual-Mechanism Architectural Design}}\par\vspace{0.06cm}
-        {\footnotesize \textbf{1. Demoted Initial Insertion (0 Extra Bits):}}
-        \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
-          \item Demand fills $\rightarrow$ Inserted at normal priority ($RRPV=2$).
-          \item Prefetch fills $\rightarrow$ Demoted to victim status ($RRPV=3$).
-          \item Inaccurate blocks are evicted first without polluting LLC.
-        \end{itemize}
-        \vspace{0.08cm}
-        {\footnotesize \textbf{2. Self-Adaptive Promotion on Demand Hit:}}
-        \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
-          \item On first demand hit, promoted to MRU ($RRPV=0$).
-          \item Line is reclassified as verified demand data $\rightarrow$ shielded.
-        \end{itemize}
-        \vspace{0.08cm}
-        {\footnotesize \textbf{3. Novel PA-Adaptive Extension (0.75 Bytes):}}
-        \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
-          \item 6-bit saturating counter ($0..63$) monitors LLC utility.
-          \item Dynamically inserts at $RRPV=2$ when useful, $RRPV=3$ when noisy.
-        \end{itemize}
-      \end{tcolorbox}
-    \end{column}
-
-    % Right Column: Chart
-    \begin{column}{0.46\linewidth}
+\begin{frame}{3. Proposed Algorithm: Flowchart \& Decision Logic}
+  \vspace{-0.25cm}
+  \begin{columns}[onlytextwidth]
+    % Left Column: TikZ Flowchart
+    \begin{column}{0.485\textwidth}
       \centering
-      \includegraphics[width=\linewidth,height=3.6cm,keepaspectratio]{chart_prefetch_usefulness.png}
-      \vspace{0.12cm}
-      \begin{tcolorbox}[boxrule=0.8pt, arc=1.5mm, colback=HighlightBg, colframe=HighlightBorder, top=1.2mm, bottom=1.2mm]
-        \centering\scriptsize
-        \textbf{Self-Adaptive Filtering:} Isolates useful prefetches ($>50\%$ for \texttt{gcc}) from catastrophic pointer noise ($<0.5\%$ for \texttt{mcf}).
+      \resizebox{\linewidth}{!}{%
+      \begin{tikzpicture}[
+        scale=0.64, every node/.style={transform shape},
+        block/.style={rectangle, draw=NavyAccent, fill=BoxBg, rounded corners=1.5mm, thick, text width=2.6cm, align=center, minimum height=0.52cm, font=\scriptsize},
+        decision/.style={diamond, draw=SapphireBlue, fill=HighlightBg, thick, text width=1.4cm, align=center, inner sep=1pt, font=\scriptsize},
+        action_demand/.style={rectangle, draw=EmeraldGreen, fill=EmeraldGreen!10, rounded corners=1.5mm, thick, text width=2.4cm, align=center, font=\scriptsize},
+        action_pf/.style={rectangle, draw=CrimsonRed, fill=CrimsonRed!10, rounded corners=1.5mm, thick, text width=2.4cm, align=center, font=\scriptsize},
+        action_hit/.style={rectangle, draw=SapphireBlue, fill=SapphireBlue!10, rounded corners=1.5mm, thick, text width=2.4cm, align=center, font=\scriptsize},
+        line/.style={draw=NavyPrimary, -{Stealth[length=2mm]}, thick}
+      ]
+        % Nodes
+        \node [block] (start) {\textbf{Access Arrives at LLC}\\(\texttt{type}, \texttt{set}, \texttt{addr})};
+        \node [decision, below=0.32cm of start] (hit_check) {\textbf{Tag Hit?}};
+        
+        % Hit branch (Right)
+        \node [action_hit, right=0.65cm of hit_check] (hit_promote) {\textbf{Hit Promotion:}\\Set $RRPV \leftarrow 0$ (MRU)\\Convert to Demand};
+        \node [block, below=0.4cm of hit_promote] (hit_serve) {Serve Data to Core};
+
+        % Miss branch (Down)
+        \node [decision, below=0.4cm of hit_check] (victim_check) {\textbf{Any Way with}\\$RRPV = 3$?};
+        \node [block, left=0.45cm of victim_check] (age_set) {\textbf{Set Aging:}\\All $RRPVs \leftarrow RRPV + 1$\\until $\ge 1$ line reaches 3};
+        \node [block, below=0.4cm of victim_check] (evict) {\textbf{Evict Way}\\with $RRPV = 3$};
+        
+        % Fill branch
+        \node [decision, below=0.35cm of evict] (fill_check) {\textbf{Packet Type?}\\(\texttt{packet.type})};
+        \node [action_demand, left=0.25cm of fill_check] (demand_fill) {\textbf{Demand Fill:}\\Insert at \textbf{$RRPV = 2$}\\(Standard Priority)};
+        \node [action_pf, right=0.25cm of fill_check] (pf_fill) {\textbf{Prefetch Fill:}\\Demote to \textbf{$RRPV = 3$}\\(\textbf{Immediate Victim})};
+
+        % Connections
+        \path [line] (start) -- (hit_check);
+        \path [line] (hit_check) -- node[above, font=\tiny\bfseries\color{EmeraldGreen}] {YES} (hit_promote);
+        \path [line] (hit_promote) -- (hit_serve);
+        \path [line] (hit_check) -- node[right, font=\tiny\bfseries\color{CrimsonRed}] {NO} (victim_check);
+        
+        \path [line] (victim_check) -- node[above, font=\tiny\bfseries\color{CrimsonRed}] {NO} (age_set);
+        \path [line] (age_set) |- (victim_check);
+        \path [line] (victim_check) -- node[right, font=\tiny\bfseries\color{EmeraldGreen}] {YES} (evict);
+        
+        \path [line] (evict) -- (fill_check);
+        \path [line] (fill_check) -- node[above, font=\tiny\bfseries] {Demand} (demand_fill);
+        \path [line] (fill_check) -- node[above, font=\tiny\bfseries] {Prefetch} (pf_fill);
+      \end{tikzpicture}%
+      }
+    \end{column}%
+    \hfill%
+    % Right Column: Microarchitectural Rules
+    \begin{column}{0.485\textwidth}
+      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.0mm, bottom=1.0mm, left=1.2mm, right=1.2mm]
+        {\small\textbf{\color{NavyPrimary}Microarchitectural Logic Rules}}\par\vspace{0.04cm}
+        
+        {\footnotesize\textbf{1. Demoted Initial Insertion (DII):}}
+        \begin{itemize}\setlength{\itemsep}{0.05em}\scriptsize
+          \item Hardware reads packet wire: \texttt{type == PREFETCH}.
+          \item Demand fills $\rightarrow$ Insert at \textbf{$RRPV = 2$}.
+          \item Prefetches $\rightarrow$ Demoted to \textbf{$RRPV = 3$}.
+          \item \textbf{Why:} Inaccurate lines become immediate eviction victims on the very next miss!
+        \end{itemize}
+        
+        \vspace{0.04cm}
+        {\footnotesize\textbf{2. Hit-Triggered Promotion (HTP):}}
+        \begin{itemize}\setlength{\itemsep}{0.05em}\scriptsize
+          \item Useful prefetches hit before eviction.
+          \item First demand hit promotes line to \textbf{$RRPV = 0$}.
+          \item Shielded from eviction as verified demand data.
+        \end{itemize}
+        
+        \vspace{0.04cm}
+        {\footnotesize\textbf{3. Storage Overhead: STRICTLY ZERO BITS:}}
+        \begin{itemize}\setlength{\itemsep}{0.05em}\scriptsize
+          \item Uses existing 2-bit RRPV counters per line.
+          \item No extra bits stored in cache tag directory!
+        \end{itemize}
       \end{tcolorbox}
     \end{column}
   \end{columns}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-% Slide 5: Experimental Results
+% Slide 5: Microarchitectural State Transitions & Set Walkthrough
 % -----------------------------------------------------------------------------
-\begin{frame}{4. ChampSim 4-Core Heterogeneous Evaluation}
+\begin{frame}{4. State Transitions \& Set Walkthrough under Noise}
+  \begin{columns}[onlytextwidth]
+    % Left Column: State Diagram
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.0mm, bottom=1.0mm]
+        \centering{\footnotesize\textbf{\color{NavyPrimary}4-State RRPV Machine ($M=2$ Bits)}}\par\vspace{0.08cm}
+        \begin{tikzpicture}[
+          scale=0.68, every node/.style={transform shape},
+          state/.style={circle, draw=NavyPrimary, thick, minimum size=0.85cm, font=\scriptsize\bfseries, align=center},
+          trans/.style={draw=NavyAccent, -{Stealth[length=2mm]}, thick},
+          hit_trans/.style={draw=EmeraldGreen, -{Stealth[length=2mm]}, thick, dashed}
+        ]
+          % States
+          \node [state, fill=EmeraldGreen!15] (s0) at (0, 1.6) {$R=0$\\{\tiny MRU}};
+          \node [state, fill=BoxBg] (s1) at (1.8, 1.6) {$R=1$\\{\tiny Short}};
+          \node [state, fill=AmberWarn!15] (s2) at (3.6, 1.6) {$R=2$\\{\tiny Long}};
+          \node [state, fill=CrimsonRed!15] (s3) at (3.6, -0.4) {$R=3$\\{\tiny Victim}};
+
+          % Insertions
+          \draw [trans, CrimsonRed] (4.6, -1.0) -- node[right, font=\tiny\bfseries] {Prefetch} (s3);
+          \draw [trans, SapphireBlue] (4.6, 2.3) -- node[above, font=\tiny\bfseries] {Demand} (s2);
+
+          % Aging transitions
+          \draw [trans] (s0) -- node[above, font=\tiny] {Age +1} (s1);
+          \draw [trans] (s1) -- node[above, font=\tiny] {Age +1} (s2);
+          \draw [trans] (s2) -- node[right, font=\tiny] {Age +1} (s3);
+
+          % Hit promotions to 0
+          \draw [hit_trans] (s3) to[bend left=35] node[below, font=\tiny\bfseries\color{EmeraldGreen}] {Hit ($R \leftarrow 0$)} (s0);
+          \draw [hit_trans] (s2) to[bend right=25] node[above, font=\tiny\bfseries\color{EmeraldGreen}] {Hit} (s0);
+          \draw [hit_trans] (s1) to[bend right=15] (s0);
+
+          % Eviction
+          \draw [trans, CrimsonRed, line width=1.2pt] (s3) -- ++(-1.3, 0) node[below, font=\tiny\bfseries\color{CrimsonRed}] {Evict Victim ($R=3$)};
+        \end{tikzpicture}
+      \end{tcolorbox}
+    \end{column}
+
+    % Right Column: Trace Walkthrough
+    \begin{column}{0.49\textwidth}
+      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.0mm, bottom=1.0mm, left=1.2mm, right=1.2mm]
+        {\footnotesize\textbf{\color{NavyPrimary}4-Way Set Trace under \texttt{mcf} Noise}}\par\vspace{0.06cm}
+        \fontsize{6.8}{8.5}\selectfont
+        \begin{tabular}{@{}l@{\hspace{0.18cm}}c@{\hspace{0.15cm}}c@{\hspace{0.15cm}}c@{\hspace{0.15cm}}c@{}}
+          \toprule
+          \textbf{Event} & \textbf{Way 0} & \textbf{Way 1} & \textbf{Way 2} & \textbf{Way 3} \\
+          \midrule
+          Initial & A ($R=0$) & B ($R=1$) & C ($R=2$) & D ($R=2$) \\
+          Fill $P_1$ (PF) & A ($R=1$) & B ($R=2$) & C ($R=3$) & \textbf{$P_1$ ($R=3$)} \\
+          Fill $P_2$ (PF) & A ($R=1$) & B ($R=2$) & C ($R=3$) & \textbf{$P_2$ ($R=3$)} \\
+          Fill $P_3$ (PF) & A ($R=1$) & B ($R=2$) & C ($R=3$) & \textbf{$P_3$ ($R=3$)} \\
+          Hit on A & \textbf{A ($R=0$)} & B ($R=2$) & C ($R=3$) & $P_3$ ($R=3$) \\
+          \bottomrule
+        \end{tabular}
+
+        \vspace{0.12cm}
+        \begin{tcolorbox}[boxrule=0.6pt, arc=1mm, colback=HighlightBg, colframe=HighlightBorder, top=1mm, bottom=1mm]
+          \scriptsize
+          \textbf{Quarantine Effect:} Inaccurate prefetches ($P_1, P_2, P_3$) enter at $R=3$ and repeatedly overwrite each other in Way 3. \textbf{Demand lines in Ways 0--2 are never touched!}
+        \end{tcolorbox}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% Slide 6: PA-Adaptive: Closed-Loop Dynamic Utility Tuning
+% -----------------------------------------------------------------------------
+\begin{frame}{5. PA-Adaptive: Closed-Loop Utility Feedback (0.75 Bytes)}
+  \begin{columns}[onlytextwidth]
+    % Left Column: Feedback Flowchart
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.2mm, bottom=1.2mm, left=1.0mm, right=1.0mm]
+        \centering{\footnotesize\textbf{\color{NavyPrimary}Closed-Loop Feedback Controller}}\par\vspace{0.08cm}
+        \resizebox{\linewidth}{!}{%
+        \begin{tikzpicture}[
+          scale=0.62, every node/.style={transform shape},
+          box/.style={rectangle, draw=NavyAccent, fill=BoxBg, rounded corners=1.5mm, thick, text width=2.6cm, align=center, font=\scriptsize},
+          decision/.style={diamond, draw=SapphireBlue, fill=HighlightBg, thick, text width=1.3cm, align=center, font=\scriptsize},
+          line/.style={draw=NavyPrimary, -{Stealth[length=2mm]}, thick}
+        ]
+          \node [box, fill=HighlightBg] (counter) {\textbf{6-Bit Saturating Counter}\\$\text{Range: } 0 \dots 63 \quad (\text{Initial: } 32)$};
+          
+          % Inputs
+          \node [box, draw=EmeraldGreen, fill=EmeraldGreen!10, above left=0.35cm and -0.7cm of counter] (hit_ev) {\textbf{Prefetch Hit:}\\Reward: $C \leftarrow \min(63, C+3)$};
+          \node [box, draw=CrimsonRed, fill=CrimsonRed!10, above right=0.35cm and -0.7cm of counter] (evict_ev) {\textbf{Unused Eviction:}\\Penalty: $C \leftarrow \max(0, C-1)$};
+
+          % Threshold
+          \node [decision, below=0.35cm of counter] (thresh) {\textbf{Counter}\\$\ge 32$?};
+          
+          % Modes
+          \node [box, draw=SapphireBlue, below left=0.35cm and -0.5cm of thresh] (stream) {\textbf{Streaming Mode:}\\Prefetches $\rightarrow RRPV = 2$};
+          \node [box, draw=CrimsonRed, below right=0.35cm and -0.5cm of thresh] (filter) {\textbf{Filtering Mode:}\\Prefetches $\rightarrow RRPV = 3$};
+
+          \path [line] (hit_ev) |- (counter);
+          \path [line] (evict_ev) |- (counter);
+          \path [line] (counter) -- (thresh);
+          \path [line] (thresh) -| node[above, font=\tiny\bfseries\color{SapphireBlue}] {YES} (stream);
+          \path [line] (thresh) -| node[above, font=\tiny\bfseries\color{CrimsonRed}] {NO} (filter);
+        \end{tikzpicture}%
+        }
+      \end{tcolorbox}
+    \end{column}%
+    \hfill%
+    % Right Column: Engineering Principles
+    \begin{column}{0.49\textwidth}
+      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.2mm, bottom=1.2mm, left=1.2mm, right=1.2mm]
+        {\small\textbf{\color{NavyPrimary}Why PA-Adaptive is Robust}}\par\vspace{0.06cm}
+        \begin{itemize}\setlength{\itemsep}{0.18em}\footnotesize
+          \item \textbf{Total Overhead: 0.75 Bytes:}\\
+            A single 6-bit counter for the entire 8MB LLC. Occupies minimal silicon area.
+          \item \textbf{Phase Change Resilience:}\\
+            Adapts dynamically when code shifts between linear arrays and pointer traversal.
+          \item \textbf{Asymmetric Reward/Penalty (+3 / -1):}\\
+            Prefetch hits are rare and valuable ($+3$), while prefetch fills are abundant ($-1$).
+          \item \textbf{Zero Critical-Path Delay:}\\
+            Updates asynchronously when lines retire; zero delay on 20-cycle tag lookup.
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% Slide 7: Experimental Results (Defensible Numbers)
+% -----------------------------------------------------------------------------
+\begin{frame}{6. ChampSim 4-Core Heterogeneous Evaluation}
   \begin{columns}[c]
     % Left Column: Chart
     \begin{column}{0.48\linewidth}
@@ -292,9 +464,9 @@
 \end{frame}
 
 % -----------------------------------------------------------------------------
-% Slide 6: Comparison vs State-of-the-Art (Clean, Zero Overflow)
+% Slide 8: Comparison vs State-of-the-Art
 % -----------------------------------------------------------------------------
-\begin{frame}{5. Comparison against State-of-the-Art Policies}
+\begin{frame}{7. Comparison against State-of-the-Art Policies}
   \begin{columns}[c]
     % Left Column: Chart
     \begin{column}{0.40\linewidth}
@@ -302,7 +474,7 @@
       \includegraphics[width=\linewidth,height=3.8cm,keepaspectratio]{chart_storage_vs_misses.png}
     \end{column}
 
-    % Right Column: Clean Publication Table (Generous Margins)
+    % Right Column: Clean Publication Table
     \begin{column}{0.58\linewidth}
       \centering
       {\footnotesize\textbf{\color{NavyPrimary}Multi-Policy Benchmark Summary (8 Workloads)}}\\[0.12cm]
@@ -332,27 +504,26 @@
 \end{frame}
 
 % -----------------------------------------------------------------------------
-% Slide 7: 1-Month Milestone Roadmap to Final Defense (Clean, Zero Overflow)
+% Slide 9: Architectural Design Extensions & Add-Ons
 % -----------------------------------------------------------------------------
-\begin{frame}{6. 1-Month Milestone Roadmap to Final Evaluation}
+\begin{frame}{8. Architectural Design Extensions \& Exploration}
   \begin{columns}[t]
     % Column 1
     \begin{column}{0.49\linewidth}
       \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.2mm, bottom=1.2mm]
-        {\small\textbf{\color{NavyPrimary}Milestone 0: Current Mid-Eval (Oct 22)}}\par\vspace{0.04cm}
+        {\small\textbf{\color{NavyPrimary}1. Bandwidth-Aware Throttling}}\par\vspace{0.04cm}
         \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
-          \item Implemented \texttt{PA-LRU}, \texttt{PA-SRRIP}, \texttt{PA-Adaptive} modules.
-          \item Verified in ChampSim on 1-core and 4-core heterogeneous mixes.
-          \item Demonstrated \textbf{+6.8\% weighted speedup} (+17.2\% on \texttt{mcf}) under heavy contention.
+          \item \textbf{Concept:} Couple LLC insertion depth with DDR4 bus queue saturation monitors.
+          \item \textbf{Mechanism:} When memory bus utilization exceeds 85\%, dynamically throttle L2 prefetch generation rate to save bandwidth.
         \end{itemize}
       \end{tcolorbox}
 
       \vspace{0.10cm}
       \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.2mm, bottom=1.2mm]
-        {\small\textbf{\color{NavyPrimary}Week 1 (Oct 23 -- 30): Cluster Scale-Up}}\par\vspace{0.04cm}
+        {\small\textbf{\color{NavyPrimary}2. Hybrid Way-Partitioning}}\par\vspace{0.04cm}
         \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
-          \item Automated test suite running on remote high-core GPU server.
-          \item Evaluate 8-core and 16-core contention mixes (\texttt{mcf $\times$ 8, 16}).
+          \item \textbf{Concept:} Combine coarse-grained way-masking (Intel CAT) with line-level PA-SRRIP.
+          \item \textbf{Mechanism:} Reserve 4 ways for latency-critical compute threads while applying PA-SRRIP across the remaining 12 shared ways.
         \end{itemize}
       \end{tcolorbox}
     \end{column}
@@ -360,24 +531,64 @@
     % Column 2
     \begin{column}{0.49\linewidth}
       \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.2mm, bottom=1.2mm]
-        {\small\textbf{\color{NavyPrimary}Week 2 (Oct 31 -- Nov 07): Multicore Fairness}}\par\vspace{0.04cm}
+        {\small\textbf{\color{NavyPrimary}3. Dead-Block Signature Integration}}\par\vspace{0.04cm}
         \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
-          \item Quantify Weighted Speedup and Maximum Slowdown metrics.
-          \item Tune dynamic adaptive counter based on core memory bandwidth.
+          \item \textbf{Concept:} Integrate lightweight PC hashing for demand lines while retaining zero-overhead prefetch demotion.
+          \item \textbf{Benefit:} Identifies dead demand blocks without needing SHiP's full 2KB SRAM table.
         \end{itemize}
       \end{tcolorbox}
 
       \vspace{0.10cm}
       \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.2mm, bottom=1.2mm]
-        {\small\textbf{\color{NavyPrimary}Weeks 3--4 (Nov 08 -- End Eval): SPEC Evaluation \& Report}}\par\vspace{0.04cm}
+        {\small\textbf{\color{NavyPrimary}4. Cross-Core Prefetch Sharing}}\par\vspace{0.04cm}
         \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
-          \item Expand across 15+ SPEC CPU 2017 benchmarks (100M--200M insts).
-          \item Stress test against aggressive prefetchers (SPP, AMPM, Bingo).
-          \item Compute EDP metrics, submit final BTP report.
+          \item \textbf{Concept:} Enable collaborative multi-threaded prefetching.
+          \item \textbf{Mechanism:} If Core 0 prefetches a line that Core 1 accesses, immediately promote to MRU ($R=0$) and mark as shared.
         \end{itemize}
       \end{tcolorbox}
     \end{column}
   \end{columns}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% Slide 10: Conclusion & Summary of Contributions
+% -----------------------------------------------------------------------------
+\begin{frame}{9. Conclusion \& Summary of Contributions}
+  \begin{columns}[t]
+    \begin{column}{0.49\linewidth}
+      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.4mm, bottom=1.4mm]
+        {\small\textbf{\color{NavyPrimary}Core Research Contributions}}\par\vspace{0.06cm}
+        \begin{enumerate}\setlength{\itemsep}{0.2em}\footnotesize
+          \item \textbf{Identified Bottleneck:}\\
+            Proved that prefetch-oblivious LLC policies are the primary vector of cross-core cache thrashing in shared multicore systems.
+          \item \textbf{Zero-Overhead Mechanism:}\\
+            Designed \texttt{PA-SRRIP} using existing bus request wires and 2-bit RRPV counters, requiring \textbf{0 extra bits of SRAM storage}.
+          \item \textbf{Adaptive Dynamic Controller:}\\
+            Designed \texttt{PA-Adaptive} using a single 6-bit counter (\textbf{0.75 Bytes}) to handle dynamic phase-change behavior.
+        \end{enumerate}
+      \end{tcolorbox}
+    \end{column}
+
+    \begin{column}{0.49\linewidth}
+      \begin{tcolorbox}[boxrule=0.7pt, arc=1.5mm, colback=BoxBg, colframe=BoxBorder, top=1.4mm, bottom=1.4mm]
+        {\small\textbf{\color{NavyPrimary}Key Evaluation Takeaways}}\par\vspace{0.06cm}
+        \begin{itemize}\setlength{\itemsep}{0.2em}\footnotesize
+          \item \textbf{Robust Multicore Throughput:}\\
+            Achieved \textbf{+6.8\% Weighted Speedup} and boosted pointer-chasing \texttt{mcf} by \textbf{+17.2\%} under heavy contention.
+          \item \textbf{Complete Demand Protection:}\\
+            Compute threads (\texttt{gcc}, \texttt{perlbench}) maintain full IPC with zero degradation from neighbor cores.
+          \item \textbf{Pareto Superiority:}\\
+            Outperformed standard SRRIP and DRRIP while eliminating dedicated 2KB predictor tables.
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.18cm}
+  \begin{tcolorbox}[boxrule=0.8pt, arc=1.5mm, colback=HighlightBg, colframe=HighlightBorder, top=1.2mm, bottom=1.2mm]
+    \centering\footnotesize
+    \textbf{Summary:} \textit{Demonstrated that intelligent insertion depth co-design achieves state-of-the-art prefetch resilience without requiring dedicated hardware storage overhead.}
+  \end{tcolorbox}
 \end{frame}
 
 \end{document}
