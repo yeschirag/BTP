@@ -1,0 +1,59 @@
+{
+  "provenance": {
+    "git_commit": "a341cc5",
+    "host": "iiitsgpu",
+    "warmup": 1000000,
+    "sim_instructions": 5000000,
+    "started_at": "2026-11-27 15:27:47 UTC"
+  },
+  "sanity_nopf": {
+    "srrip_misses": 1149732,
+    "pa_rrip_misses": 1148368
+  },
+  "va_ampm_lite": {
+    "alone": {"gcc": 2.0740, "mcf": 0.1094, "perlbench": 1.8680, "omnetpp": 0.3490},
+    "mix1_het": [
+      {"policy": "Baseline LRU",    "key": "lru",       "cpu": [2.0600, 0.0881, 1.8340, 0.2895], "norm_pct": 0.00,  "ws": 0.9025, "hs": 0.8943, "misses": 1208550, "l2_acc": 26.89},
+      {"policy": "Baseline SRRIP",  "key": "srrip",     "cpu": [2.0340, 0.0956, 1.8330, 0.2770], "norm_pct": 0.73,  "ws": 0.9074, "hs": 0.9003, "misses": 1124384, "l2_acc": 27.13},
+      {"policy": "DRRIP",           "key": "drrip",     "cpu": [2.0580, 0.0901, 1.8340, 0.2899], "norm_pct": 0.58,  "ws": 0.9071, "hs": 0.9001, "misses": 1185074, "l2_acc": 26.99},
+      {"policy": "SHiP",            "key": "ship",      "cpu": [2.0540, 0.0986, 1.8360, 0.3157], "norm_pct": 5.19,  "ws": 0.9447, "hs": 0.9429, "misses": 1066144, "l2_acc": 27.19},
+      {"policy": "PACMan-HM",       "key": "pacman",    "cpu": [2.0460, 0.0951, 1.8330, 0.2917], "norm_pct": 1.99,  "ws": 0.9182, "hs": 0.9133, "misses": 1109056, "l2_acc": 27.00},
+      {"policy": "PA-LRU (Ours)",   "key": "pa_lru",    "cpu": [2.0500, 0.0896, 1.8340, 0.2928], "norm_pct": 0.59,  "ws": 0.9071, "hs": 0.9003, "misses": 1190366, "l2_acc": 27.04},
+      {"policy": "PA-SRRIP (Ours)", "key": "pa_srrip",  "cpu": [2.0420, 0.0952, 1.8320, 0.2923], "norm_pct": 2.00,  "ws": 0.9182, "hs": 0.9135, "misses": 1109658, "l2_acc": 26.91},
+      {"policy": "PA-Adaptive",     "key": "pa_adapt",  "cpu": [2.0470, 0.0951, 1.8310, 0.2921], "norm_pct": 2.01,  "ws": 0.9183, "hs": 0.9135, "misses": 1110610, "l2_acc": 26.95}
+    ],
+    "mix2_mcf4": [
+      {"policy": "Baseline LRU",    "key": "lru",       "cpu": [0.0743, 0.0744, 0.0742, 0.0744], "norm_pct": 0.00,  "ws": 0.6796, "hs": 0.6796, "misses": 3045362, "l2_acc": 28.91},
+      {"policy": "Baseline SRRIP",  "key": "srrip",     "cpu": [0.0794, 0.0793, 0.0792, 0.0794], "norm_pct": 6.66,  "ws": 0.7248, "hs": 0.7248, "misses": 2834660, "l2_acc": 28.82},
+      {"policy": "DRRIP",           "key": "drrip",     "cpu": [0.0806, 0.0807, 0.0805, 0.0806], "norm_pct": 8.41,  "ws": 0.7367, "hs": 0.7367, "misses": 2854058, "l2_acc": 28.98},
+      {"policy": "SHiP",            "key": "ship",      "cpu": [0.0856, 0.0855, 0.0853, 0.0855], "norm_pct": 14.98, "ws": 0.7814, "hs": 0.7814, "misses": 2623182, "l2_acc": 28.88},
+      {"policy": "PACMan-HM",       "key": "pacman",    "cpu": [0.0782, 0.0782, 0.0779, 0.0783], "norm_pct": 5.11,  "ws": 0.7143, "hs": 0.7143, "misses": 2863414, "l2_acc": 28.87},
+      {"policy": "PA-LRU (Ours)",   "key": "pa_lru",    "cpu": [0.0744, 0.0744, 0.0742, 0.0745], "norm_pct": 0.03,  "ws": 0.6798, "hs": 0.6798, "misses": 3047436, "l2_acc": 28.92},
+      {"policy": "PA-SRRIP (Ours)", "key": "pa_srrip",  "cpu": [0.0782, 0.0781, 0.0780, 0.0783], "norm_pct": 5.11,  "ws": 0.7143, "hs": 0.7143, "misses": 2862338, "l2_acc": 28.90},
+      {"policy": "PA-Adaptive",     "key": "pa_adapt",  "cpu": [0.0782, 0.0783, 0.0780, 0.0782], "norm_pct": 5.13,  "ws": 0.7144, "hs": 0.7144, "misses": 2861418, "l2_acc": 28.90}
+    ]
+  },
+  "ip_stride": {
+    "alone": {"gcc": 2.0320, "mcf": 0.1092, "perlbench": 1.8590, "omnetpp": 0.3393},
+    "mix1_het": [
+      {"policy": "Baseline LRU",    "key": "lru",       "cpu": [2.0100, 0.0895, 1.8200, 0.2811], "norm_pct": 0.00,  "ws": 0.9041, "hs": 0.8970, "misses": 1224826, "l2_acc": 30.62},
+      {"policy": "Baseline SRRIP",  "key": "srrip",     "cpu": [1.9990, 0.0963, 1.8240, 0.2710], "norm_pct": 0.91,  "ws": 0.9113, "hs": 0.9046, "misses": 1147114, "l2_acc": 31.40},
+      {"policy": "DRRIP",           "key": "drrip",     "cpu": [2.0060, 0.0914, 1.8200, 0.2823], "norm_pct": 0.58,  "ws": 0.9087, "hs": 0.9026, "misses": 1204426, "l2_acc": 30.32},
+      {"policy": "SHiP",            "key": "ship",      "cpu": [2.0150, 0.0994, 1.8260, 0.3057], "norm_pct": 5.10,  "ws": 0.9463, "hs": 0.9446, "misses": 1088776, "l2_acc": 30.80},
+      {"policy": "PACMan-HM",       "key": "pacman",    "cpu": [2.0090, 0.0953, 1.8210, 0.2814], "norm_pct": 1.66,  "ws": 0.9177, "hs": 0.9125, "misses": 1141878, "l2_acc": 30.59},
+      {"policy": "PA-LRU (Ours)",   "key": "pa_lru",    "cpu": [2.0070, 0.0896, 1.8210, 0.2811], "norm_pct": -0.01, "ws": 0.9040, "hs": 0.8969, "misses": 1223036, "l2_acc": 30.94},
+      {"policy": "PA-SRRIP (Ours)", "key": "pa_srrip",  "cpu": [2.0090, 0.0951, 1.8210, 0.2816], "norm_pct": 1.60,  "ws": 0.9172, "hs": 0.9121, "misses": 1143828, "l2_acc": 30.61},
+      {"policy": "PA-Adaptive",     "key": "pa_adapt",  "cpu": [2.0080, 0.0953, 1.8210, 0.2816], "norm_pct": 1.65,  "ws": 0.9176, "hs": 0.9125, "misses": 1142268, "l2_acc": 30.67}
+    ],
+    "mix2_mcf4": [
+      {"policy": "Baseline LRU",    "key": "lru",       "cpu": [0.0743, 0.0744, 0.0742, 0.0745], "norm_pct": 0.00,  "ws": 0.6806, "hs": 0.6806, "misses": 3083478, "l2_acc": 32.31},
+      {"policy": "Baseline SRRIP",  "key": "srrip",     "cpu": [0.0794, 0.0794, 0.0794, 0.0795], "norm_pct": 6.89,  "ws": 0.7275, "hs": 0.7275, "misses": 2860892, "l2_acc": 31.79},
+      {"policy": "DRRIP",           "key": "drrip",     "cpu": [0.0808, 0.0809, 0.0806, 0.0809], "norm_pct": 8.67,  "ws": 0.7396, "hs": 0.7396, "misses": 2884322, "l2_acc": 32.02},
+      {"policy": "SHiP",            "key": "ship",      "cpu": [0.0857, 0.0858, 0.0855, 0.0859], "norm_pct": 15.35, "ws": 0.7851, "hs": 0.7851, "misses": 2647162, "l2_acc": 31.87},
+      {"policy": "PACMan-HM",       "key": "pacman",    "cpu": [0.0781, 0.0782, 0.0779, 0.0781], "norm_pct": 5.07,  "ws": 0.7151, "hs": 0.7151, "misses": 2896238, "l2_acc": 32.22},
+      {"policy": "PA-LRU (Ours)",   "key": "pa_lru",    "cpu": [0.0743, 0.0743, 0.0741, 0.0744], "norm_pct": -0.08, "ws": 0.6800, "hs": 0.6800, "misses": 3084510, "l2_acc": 31.88},
+      {"policy": "PA-SRRIP (Ours)", "key": "pa_srrip",  "cpu": [0.0781, 0.0782, 0.0779, 0.0782], "norm_pct": 5.07,  "ws": 0.7151, "hs": 0.7151, "misses": 2896968, "l2_acc": 31.77},
+      {"policy": "PA-Adaptive",     "key": "pa_adapt",  "cpu": [0.0781, 0.0782, 0.0779, 0.0781], "norm_pct": 5.08,  "ws": 0.7152, "hs": 0.7152, "misses": 2896792, "l2_acc": 32.27}
+    ]
+  }
+}

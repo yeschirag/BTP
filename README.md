@@ -1,146 +1,63 @@
-# Zero-Overhead Prefetch-Resilient LLC Replacement Policy for Multicore Systems
+# Prefetch-Aware LLC Replacement Policies for Multicore Processors
 
 **Bachelor Thesis Project (BTP)**  
-**Author:** Chirag Sharma (Roll No: S20240010223)  
-**Project Advisor:** Dr. Bheemappa Halavar  
-**Domain:** Computer Architecture — Cache Memory Systems & Multicore Resource Management  
-**Current Milestone:** Mid-Evaluation Review (End-Evaluation in 1 Month)
+**Student:** Chirag Sharma (`S20240010223`)  
+**Supervisor:** Dr. Bheemappa Halavar, Dept. of CSE, IIIT Sri City  
+**Provenance:** Matched ChampSim Grid (`git a341cc5` on `iiitsgpu`, 1M warmup / 5M sim)  
 
 ---
 
-## 📌 Executive Summary
+## Executive Summary
 
-Hardware prefetching (e.g., IP-Stride, AMPM, SPP) significantly boosts performance for regular stride access patterns, but it introduces severe **cache pollution and bandwidth thrashing** for irregular or pointer-chasing workloads (such as `429.mcf`). Standard replacement policies (LRU, SRRIP) are prefetch-oblivious and treat speculative prefetch blocks with high priority, prematurely evicting critical demand data of co-running cores.
+In shared non-inclusive Last-Level Caches (8 MB, 16-way), aggressive L2 hardware prefetchers (`va_ampm_lite`, `ip_stride`) cause severe co-runner displacement when irregular workloads (`429.mcf`) execute alongside latency-sensitive applications (`471.omnetpp`, `403.gcc`). Standard replacement policies (`LRU`, `SRRIP`) are prefetch-oblivious and allocate speculative fills at high retention priority.
 
-Existing state-of-the-art solutions (such as **DRRIP** with set-dueling PSEL counters or **SHiP** with an 8,192-entry SHCT signature table) introduce non-trivial hardware complexity and dedicated SRAM storage budgets (2 KB+). 
-
-This project implements a **zero-overhead, prefetch-resilient LLC replacement policy suite** featuring:
-1. **Prefetch-Aware LRU (PA-LRU):** Inserts speculative prefetches at low priority (near-LRU), demand fills at MRU, and promotes upon hit.
-2. **Prefetch-Aware SRRIP (PA-SRRIP):** Inserts prefetches at distant priority ($RRPV=3$), demand fills at $RRPV=2$, and promotes hits to $RRPV=0$ (0 extra bits).
-3. **PA-Adaptive SRRIP:** A dynamic 6-bit saturating filter (0.75 Bytes) that adapts prefetch insertion depth between $RRPV=2$ (streaming) and $RRPV=3$ (noise filtering) based on runtime usefulness feedback.
+This repository implements and evaluates three prefetch-aware replacement policies in cycle-accurate **ChampSim**, alongside matched SOTA baselines (`SRRIP`, `DRRIP`, `SHiP`, `PACMan-HM`):
+1. **`PA-LRU` ([src/lru_prefetch_aware.cc](src/lru_prefetch_aware.cc)):** Inserts prefetch fills near LRU (`*min_it + 1`) and promotes on demand/prefetch hit (`cycle++`).
+2. **`PA-SRRIP` ([src/rrip_prefetch_aware.cc](src/rrip_prefetch_aware.cc)):** Exploits existing 2-bit `RRPV` counters to demote `PREFETCH` fills to `RRPV = 3` (immediate victim) and `DEMAND` fills to `RRPV = 2`, promoting hits (`type != WRITE`) to `RRPV = 0` with **strictly 0 extra SRAM bits**.
+3. **`PA-Adaptive` ([src/rrip_prefetch_adaptive.cc](src/rrip_prefetch_adaptive.cc)):** Adds a closed-loop 6-bit saturating confidence counter (`+3` on useful PF hit, `-1` on unused PF eviction) switching prefetch insertion between `RRPV = 2` and `RRPV = 3` (*Note: requires reusing a 1-bit/line PMU `prefetch` flag; otherwise standalone tracking costs 16 KB*).
 
 ---
 
-## 📊 Key Results (20M Instruction Multicore Runs)
+## Verified Matched Grid Results (`iiitsgpu`, `git a341cc5`)
 
-Evaluated on the cycle-accurate **ChampSim** simulator using SPEC CPU traces on an 8MB shared LLC.
+All 8 replacement policies were run under **identical L2C prefetchers** (`va_ampm_lite` and `ip_stride`) with 1-core `IPC_alone` references for true Weighted Speedup and Harmonic Fairness. See **[btp_report.md](btp_report.md)** for full tables and root-cause microarchitectural diagnosis.
 
-### 4-Core Heterogeneous Workload Mix (`gcc + mcf + perlbench + omnetpp`):
+### 4-Core Heterogeneous Mix (`gcc + mcf + perlbench + omnetpp`, `va_ampm_lite`)
+| Policy | `gcc` | `mcf` | `perlbench` | `omnetpp` | Weighted Speedup | Harmonic Speedup | LLC Demand Misses | Extra Storage |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|
+| Baseline LRU | 2.0600 | 0.0881 | 1.8340 | 0.2895 | 0.9025 | 0.8943 | 1,208,550 | 0 B |
+| Baseline SRRIP | 2.0340 | 0.0956 | 1.8330 | 0.2770 | 0.9074 | 0.9003 | 1,124,384 | 0 B |
+| DRRIP | 2.0580 | 0.0901 | 1.8340 | 0.2899 | 0.9071 | 0.9001 | 1,185,074 | ~16 B |
+| PACMan-HM | 2.0460 | 0.0951 | 1.8330 | 0.2917 | 0.9182 | 0.9133 | 1,109,056 | 0 B |
+| **PA-SRRIP (Ours)** | 2.0420 | **0.0952** | 1.8320 | **0.2923** | **0.9182** | **0.9135** | **1,109,658** | **0 B (Strictly)** |
+| **PA-Adaptive (Ours)** | 2.0470 | **0.0951** | 1.8310 | **0.2921** | **0.9183** | **0.9135** | **1,110,610** | 0.75 B* / 16 KB |
+| SHiP (ISCA'11) | 2.0540 | 0.0986 | 1.8360 | 0.3157 | 0.9447 | 0.9429 | 1,066,144 | 2,048 B + sampler |
 
-| Core | Trace | Access Pattern | Baseline IPC (LRU) | PA-LRU IPC | PA-SRRIP IPC | Speedup / Impact |
-|:---|:---|:---|:---:|:---:|:---:|:---|
-| **CPU 0** | `gcc` | Stride / Mixed | 0.4248 | **2.1800** | **2.1790** | **5.13x Speedup (+413% IPC)** (useful prefetches promoted) |
-| **CPU 1** | `mcf` | Pointer-chasing | 0.0743 | **0.0906** | **0.0993** | **+33.6% IPC** (useless pointer noise demoted to victim) |
-| **CPU 2** | `perlbench` | Compute-bound | 1.4740 | **2.0190** | **2.0180** | **Robust high locality** maintained across cores |
-| **CPU 3** | `omnetpp` | Graph traversal | 0.2566 | **0.3145** | **0.3207** | **+25.0% IPC** (cross-core cache thrashing suppressed) |
-| **Hardware Cost** | — | — | 0 Bytes | **0 Bytes** | **0 Bytes** | **Zero Storage Overhead** (uses request type hint) |
-| **Prefetch Usefulness**| — | — | N/A | **32.25%** | **31.80%** | Selective promotion of verified lines |
-
----
-
-## 🔬 Multi-Policy Benchmark Comparison (Heterogeneous Mix 1)
-
-| Policy | Demand Misses | Demand Hit Rate | Prefetch Fills | Useful Promoted | Storage Overhead |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| Baseline LRU | 15,720 | 73.80% | 15,342 | 72 | 0 Bytes |
-| Baseline SRRIP | 15,682 | 73.86% | 15,307 | 71 | 0 Bytes |
-| DRRIP (Set Dueling) | 15,617 | 73.97% | 15,136 | 67 | 16 Bytes (PSEL + 32 sets) |
-| SHiP (8K SHCT) | 14,589 | 75.68% | 14,474 | 64 | 2,048 Bytes (2 KB SRAM) |
-| **PA-LRU (Ours)** | **15,528** | **74.12%** | **15,350** | **58** | **0 Bytes** |
-| **PA-SRRIP (Ours)** | **15,507** | **74.15%** | **15,151** | **57** | **0 Bytes** |
-| **PA-Adaptive (Ours)** | **15,503** | **74.16%** | **14,930** | **57** | **0.75 Bytes (6 bits)** |
+- **Zero-Overhead Frontier:** `PA-SRRIP` beats `LRU`, `SRRIP`, `DRRIP`, and `PA-LRU` in heterogeneous contention at **0 extra hardware bits** (restoring `omnetpp` from `0.2770` under `SRRIP` to `0.2923` while matching `PACMan-HM`).
+- **Honest Failure-Mode Finding (`mcf x 4`):** When `mcf` L2 prefetch accuracy sits at `28.9–32.3%`, unconditional `RRPV = 3` demotion (`PA-SRRIP`, `PACMan-HM`: `WS 0.7143`) trails `SRRIP` (`0.7248`) and `DRRIP` (`0.7367`), and L2 hit absorption keeps LLC prefetch hits `<3%`, driving `PA-Adaptive` to collapse toward `PA-SRRIP`.
 
 ---
 
-## 🗓️ 1-Month Milestone Roadmap to End-Evaluation
-
-- **Mid-Evaluation (October 22):**
-  - Working C++ modules for `lru_prefetch_aware`, `rrip_prefetch_aware`, and `rrip_prefetch_adaptive`.
-  - Single-core and 4-core ChampSim baseline and prefetch-aware evaluations complete.
-  - Interactive presentation deck, Beamer LaTeX slides, and quantitative comparative tables.
-- **Week 1 (Oct 23 - Oct 30) — Multicore Scaling on GPU/Server Node:**
-  - Execute 8-core and 16-core shared LLC simulations under heavy noise contention (`mcf × 8`, `mcf × 16`).
-  - Benchmark aggressive prefetchers: SPP, AMPM, IP-Stride, Bingo.
-- **Week 2 (Oct 31 - Nov 07) — Drishti Slicing & Interconnect Integration:**
-  - Incorporate per-slice prefetch awareness accounting for ring/mesh non-uniform cache access (NUCA) latencies.
-  - Integrate with per-core GPHT reuse tables.
-- **Week 3 (Nov 08 - Nov 15) — Full SPEC CPU 2017 Expansion:**
-  - Expand benchmark suite to 15+ workloads (`lbm`, `milc`, `namd`, `bzip2`, `xalancbmk`, `leela`, `wrf`).
-  - Conduct long runs (100M - 200M instructions per core).
-- **Week 4 (Nov 16 - End Eval) — Thesis Defense & Final Submission:**
-  - Comprehensive Energy-Delay Product (EDP), weighted speedup, and fairness index analysis.
-  - Final BTP Thesis defense & paper submission.
-
----
-
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 btp/
-├── README.md                     # Project overview, roadmap, and quickstart guide
-├── scripts/                      # Automation, remote server execution, and parsing tools
-│   ├── run_remote_experiments.sh # Automated multicore simulation suite for GPU/server node
-│   └── parse_results.py          # Results extractor generating Markdown summary tables
-├── src/                          # Standalone simulators and custom replacement modules
-│   ├── lru_prefetch_aware.cc     # Prefetch-aware LRU implementation
-│   ├── lru_prefetch_aware.h
-│   ├── rrip_prefetch_aware.cc    # Prefetch-aware SRRIP implementation
-│   ├── rrip_prefetch_aware.h
-│   ├── rrip_prefetch_adaptive.cc # Dynamic adaptive demotion filter implementation
-│   ├── rrip_prefetch_adaptive.h
-│   ├── run_multi_eval_suite.cpp  # Multi-policy evaluation testbench (LRU, SRRIP, DRRIP, SHiP, PA)
-│   └── sim_llc_prefetch_aware.cpp# Standalone cycle-accurate LLC simulator
-├── configs/                      # ChampSim JSON experiment configurations
-│   ├── champsim_4core_baseline.json
-│   ├── champsim_4core_prefetch_aware.json
-│   ├── champsim_4core_pa_rrip.json
-│   ├── champsim_4core_pa_adaptive.json
-│   ├── champsim_4core_pa_ampm.json
-│   └── champsim_4core_next_line.json
-├── presentation/                 # Presentation slides, LaTeX sources & visual charts
-│   ├── BTP_Guide_Presentation.tex# Beamer LaTeX presentation (7 slides)
-│   ├── presentation_preview.html # Interactive presentation preview with fullscreen & print
-│   ├── ppt.md                    # Slide content outline & speaker notes
-│   ├── generate_btp_charts.py    # Matplotlib chart generation script
-│   ├── chart_4core_all_cpus_ipc.png
-│   ├── chart_4core_gcc_speedup.png
-│   ├── chart_prefetch_usefulness.png
-│   └── chart_storage_vs_misses.png
-├── results/                      # Raw simulation execution logs and traces
-├── docs/                         # Progress logs, research papers, and meeting summaries
-└── ChampSim/                     # Full ChampSim cycle-accurate simulator repository
+├── btp_report.md                     # Deep microarchitectural technical report & audit
+├── src/                              # Custom replacement policies & synthetic eval suite
+│   ├── lru_prefetch_aware.{h,cc}
+│   ├── rrip_prefetch_aware.{h,cc}
+│   ├── rrip_prefetch_adaptive.{h,cc}
+│   ├── pacman.{h,cc}
+│   └── run_multi_eval_suite.cpp      # Standalone 8-policy micro-trace testbench (./run_eval)
+├── configs/grid/                     # 20 deterministic matched ChampSim JSON configs
+├── scripts/
+│   ├── generate_grid_configs.py      # Generates matched grids (va_ampm_lite, ip_stride, nopf, 1core)
+│   ├── run_iiitsgpu_grid.sh          # Parallel ThreadPool runner with resume & provenance manifest
+│   └── analyze_and_generate.py       # Single-source log parser (WS, HS, LLC misses, L2 Acc)
+├── results/iiitsgpu_grid_a341cc5.json# Verified parsed metrics from iiitsgpu matched grid
+├── presentation/
+│   ├── BTP_Guide_Presentation.tex    # 11-slide ISCA/MICRO-style Beamer presentation
+│   ├── BTP_Guide_Presentation.pdf
+│   └── generate_btp_charts.py        # Generates charts directly from results JSON
+└── ChampSim/                         # Cycle-accurate ChampSim simulator submodule
 ```
-
----
-
-## 🛠️ Build & Simulation Guide
-
-### 1. Compile & Run Standalone Multi-Policy Testbench
-```bash
-clang++ -O3 -std=c++17 src/run_multi_eval_suite.cpp -o run_eval
-./run_eval
-```
-
-### 2. Generate Presentation Charts
-```bash
-python3 presentation/generate_btp_charts.py
-```
-
-### 3. Parse ChampSim Simulation Results
-```bash
-python3 scripts/parse_results.py ChampSim/results_fast/*.txt
-```
-
-### 4. Run Automated Suite on Remote GPU Node
-```bash
-# In remote server terminal:
-./scripts/run_remote_experiments.sh
-```
-
----
-
-## 👥 Contributors & Contact
-
-- **Student:** Chirag Sharma (`S20240010223`)
-- **Advisor:** Dr. Bheemappa Halavar
-- **Institution:** Indian Institute of Information Technology, Sri City

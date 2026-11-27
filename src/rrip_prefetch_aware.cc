@@ -5,13 +5,16 @@
 #include <cassert>
 #include <iostream>
 
+// Constructor: initializes every slot's 2-bit RRPV to MAX_RRPV (3 = immediate victim)
 rrip_prefetch_aware::rrip_prefetch_aware(CACHE* cache) : rrip_prefetch_aware(cache, cache->NUM_SET, cache->NUM_WAY) {}
 
 rrip_prefetch_aware::rrip_prefetch_aware(CACHE* cache, long sets, long ways)
     : replacement(cache), NUM_WAY(ways),
       rrpv(static_cast<std::size_t>(sets * ways), MAX_RRPV),
-      is_prefetched(static_cast<std::size_t>(sets * ways), false) {}
+      is_prefetched(static_cast<std::size_t>(sets * ways), false) {} // Stats-only flag (0 bits needed in hardware)
 
+// STEP 1 (EVICTION): Scan the 16 slots in `set` for RRPV == 3 (distant/victim).
+// If nobody is 3 yet, age every slot in the set by +1 and scan again until one hits 3.
 long rrip_prefetch_aware::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                                       champsim::address full_addr, access_type type)
 {
@@ -25,7 +28,7 @@ long rrip_prefetch_aware::find_victim(uint32_t triggering_cpu, uint64_t instr_id
       return std::distance(begin, victim);
     }
 
-    // Increment RRPV of all lines in the set until at least one line reaches MAX_RRPV
+    // No line at 3 yet -> increment RRPV of every slot (< 3) by +1
     for (auto it = begin; it != end; ++it) {
       if (*it < MAX_RRPV) {
         (*it)++;
@@ -34,31 +37,34 @@ long rrip_prefetch_aware::find_victim(uint32_t triggering_cpu, uint64_t instr_id
   }
 }
 
+// STEP 2 (ARRIVAL / FILL): Runs when a newly fetched block lands in `way`.
+// Uses only the bus transaction `type` wire (zero extra per-line hardware state).
 void rrip_prefetch_aware::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
                                                  access_type type)
 {
   std::size_t index = static_cast<std::size_t>(set * NUM_WAY + way);
 
   if (type == access_type::PREFETCH) {
-    // PREFETCH: Insert at DISTANT priority (RRPV = 3)
+    // SPECULATIVE PREFETCH: Insert at RRPV = 3 (immediate eviction candidate / quarantine)
     prefetch_fills++;
-    is_prefetched.at(index) = true;
-    rrpv.at(index) = MAX_RRPV; // 3
+    is_prefetched.at(index) = true; // Stats-only
+    rrpv.at(index) = MAX_RRPV;      // 3
   } else {
-    // DEMAND: Insert at LONG-RE-REFERENCE priority (RRPV = 2, standard SRRIP)
+    // DEMAND FILL: Insert at RRPV = 2 (standard SRRIP "long re-reference" protection)
     demand_fills++;
     is_prefetched.at(index) = false;
-    rrpv.at(index) = MAX_RRPV - 1; // 2
+    rrpv.at(index) = MAX_RRPV - 1;  // 2
   }
 }
 
+// STEP 3 (HIT PROMOTION): Runs on cache lookup; if found (`hit`), promote slot to RRPV = 0 (MRU).
 void rrip_prefetch_aware::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                                    champsim::address victim_addr, access_type type, uint8_t hit)
 {
   std::size_t index = static_cast<std::size_t>(set * NUM_WAY + way);
 
   if (hit && access_type{type} != access_type::WRITE) {
-    // On hit: promote to NEAR-IMMEDIATE re-reference (RRPV = 0)
+    // On hit: promote from RRPV 3/2/1 straight to RRPV = 0 (maximum protection)
     if (is_prefetched[index]) {
       prefetch_promoted++;
       is_prefetched[index] = false; // Useful prefetch line is now treated as demand

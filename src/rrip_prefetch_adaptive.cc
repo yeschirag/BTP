@@ -5,6 +5,7 @@
 #include <cassert>
 #include <iostream>
 
+// Constructor: initializes RRPV=3 and confidence_counter=32 (starts in neutral/streaming threshold)
 rrip_prefetch_adaptive::rrip_prefetch_adaptive(CACHE* cache) : rrip_prefetch_adaptive(cache, cache->NUM_SET, cache->NUM_WAY) {}
 
 rrip_prefetch_adaptive::rrip_prefetch_adaptive(CACHE* cache, long sets, long ways)
@@ -12,6 +13,8 @@ rrip_prefetch_adaptive::rrip_prefetch_adaptive(CACHE* cache, long sets, long way
       rrpv(static_cast<std::size_t>(sets * ways), MAX_RRPV),
       is_prefetched(static_cast<std::size_t>(sets * ways), false) {}
 
+// STEP 1 (EVICTION + FEEDBACK PENALTY): Finds first RRPV == 3 slot to evict (aging +1 if none).
+// If that victim entered as a prefetch and was NEVER hit, penalize the 6-bit confidence counter (-1).
 long rrip_prefetch_adaptive::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                                         champsim::address full_addr, access_type type)
 {
@@ -23,15 +26,16 @@ long rrip_prefetch_adaptive::find_victim(uint32_t triggering_cpu, uint64_t instr
     if (victim != end) {
       long way = std::distance(begin, victim);
       std::size_t index = static_cast<std::size_t>(set * NUM_WAY + way);
+      // Note: reads `is_prefetched[index]` (reuses 1-bit/line prefetch metadata or costs 16 KB on 8MB LLC)
       if (is_prefetched[index]) {
-        // Victim was an un-promoted prefetch line -> penalize confidence counter
+        // Victim was an un-promoted prefetch line -> penalize confidence counter (-1)
         prefetch_demoted_evictions++;
         confidence_counter = std::max(0, confidence_counter - 1);
       }
       return way;
     }
 
-    // Age lines in the set
+    // Age all lines in the set (< 3) by +1
     for (auto it = begin; it != end; ++it) {
       if (*it < MAX_RRPV) {
         (*it)++;
@@ -40,6 +44,8 @@ long rrip_prefetch_adaptive::find_victim(uint32_t triggering_cpu, uint64_t instr
   }
 }
 
+// STEP 2 (ADAPTIVE FILL): Chooses prefetch insertion depth dynamically using confidence_counter.
+// >= 32 (Streaming Mode): insert prefetch at RRPV=2; < 32 (Filtering Mode): demote to RRPV=3.
 void rrip_prefetch_adaptive::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
                                                    access_type type)
 {
@@ -48,15 +54,17 @@ void rrip_prefetch_adaptive::replacement_cache_fill(uint32_t triggering_cpu, lon
   if (type == access_type::PREFETCH) {
     prefetch_fills++;
     is_prefetched.at(index) = true;
-    // Dynamic demotion: if confidence >= 32, insert at RRPV=2, else demote to RRPV=3
+    // Dynamic demotion: high confidence keeps useful stream (RRPV=2); low confidence quarantines (RRPV=3)
     rrpv.at(index) = (confidence_counter >= 32) ? (MAX_RRPV - 1) : MAX_RRPV;
   } else {
     demand_fills++;
     is_prefetched.at(index) = false;
-    rrpv.at(index) = MAX_RRPV - 1; // 2
+    rrpv.at(index) = MAX_RRPV - 1; // Demand always enters at RRPV=2
   }
 }
 
+// STEP 3 (HIT PROMOTION + FEEDBACK REWARD): On hit, promote slot to RRPV=0 (MRU).
+// If the hit block was an un-promoted prefetch, reward confidence_counter (+3) and clear flag.
 void rrip_prefetch_adaptive::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                                      champsim::address victim_addr, access_type type, uint8_t hit)
 {
@@ -65,11 +73,11 @@ void rrip_prefetch_adaptive::update_replacement_state(uint32_t triggering_cpu, l
   if (hit && access_type{type} != access_type::WRITE) {
     if (is_prefetched[index]) {
       prefetch_promoted++;
-      // Reward confidence counter (+3)
+      // Asymmetric +3 reward: useful prefetch hits are rarer than useless fills
       confidence_counter = std::min(63, confidence_counter + 3);
       is_prefetched[index] = false;
     }
-    rrpv[index] = 0;
+    rrpv[index] = 0; // Promote to MRU (maximum retention)
   }
 }
 
