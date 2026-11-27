@@ -11,12 +11,12 @@
 
 set -u
 
-JOBS="${JOBS:-14}"
-MODE="${1:-core}" # 'core' (Mix1+Mix2+Alone+Control = 42 jobs) or '--full' (all 4 mixes = 74 jobs)
-WARMUP="${WARMUP:-2000000}"
-SIM_INST="${SIM_INST:-20000000}"
+JOBS="${JOBS:-32}"
+MODE="${1:-core}" # 'core' (Mix1+Mix2+Alone+Control = 42 jobs, <4h strict) or '--full' (74 jobs)
+WARMUP="${WARMUP:-1000000}"
+SIM_INST="${SIM_INST:-5000000}"
 WARMUP_CTRL="${WARMUP_CTRL:-1000000}"
-SIM_CTRL="${SIM_CTRL:-10000000}"
+SIM_CTRL="${SIM_CTRL:-5000000}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -126,20 +126,7 @@ OMNET="traces/471.omnetpp-188B.champsimtrace.xz"
 POLICIES=(lru srrip drrip ship pacman lru_prefetch_aware rrip_prefetch_aware rrip_prefetch_adaptive)
 PREFETCHERS=(va_ampm_lite ip_stride)
 
-# A. Primary 4-Core Matched Grids
-for pf in "${PREFETCHERS[@]}"; do
-    for pol in "${POLICIES[@]}"; do
-        bin="bin/champsim_4core_${pf}_${pol}"
-        echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/mix1_het_${pf}_${pol}.txt|${GCC} ${MCF} ${PERL} ${OMNET}" >> "${QUEUE_FILE}"
-        echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/mix2_mcf4_${pf}_${pol}.txt|${MCF} ${MCF} ${MCF} ${MCF}" >> "${QUEUE_FILE}"
-        if [ "${MODE}" = "--full" ] || [ "${MODE}" = "full" ]; then
-            echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/mix3_reg4_${pf}_${pol}.txt|${GCC} ${GCC} ${PERL} ${PERL}" >> "${QUEUE_FILE}"
-            echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/mix4_asym_${pf}_${pol}.txt|${MCF} ${MCF} ${OMNET} ${GCC}" >> "${QUEUE_FILE}"
-        fi
-    done
-done
-
-# B. 1-Core Standalone Alone Baselines (for True Weighted & Harmonic Speedup)
+# A. Fast 1-Core Alone Baselines & Control FIRST (frees worker slots quickly for 4-core runs)
 for pf in "${PREFETCHERS[@]}"; do
     bin="bin/champsim_1core_${pf}_lru"
     echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/alone_${pf}_gcc.txt|${GCC}" >> "${QUEUE_FILE}"
@@ -148,9 +135,28 @@ for pf in "${PREFETCHERS[@]}"; do
     echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/alone_${pf}_omnetpp.txt|${OMNET}" >> "${QUEUE_FILE}"
 done
 
-# C. Prefetcher-OFF Equivalence Verification (SRRIP vs PA-SRRIP)
+# B. Prefetcher-OFF Equivalence Verification (SRRIP vs PA-SRRIP)
 echo "bin/champsim_4core_nopf_srrip|${WARMUP_CTRL}|${SIM_CTRL}|${RESULTS_DIR}/ctrl_nopf_srrip.txt|${GCC} ${MCF} ${PERL} ${OMNET}" >> "${QUEUE_FILE}"
 echo "bin/champsim_4core_nopf_rrip_prefetch_aware|${WARMUP_CTRL}|${SIM_CTRL}|${RESULTS_DIR}/ctrl_nopf_pa_rrip.txt|${GCC} ${MCF} ${PERL} ${OMNET}" >> "${QUEUE_FILE}"
+
+# C. Primary 4-Core Matched Grids (Mix 1 Heterogeneous first, then Mix 2 mcfx4)
+for pf in "${PREFETCHERS[@]}"; do
+    for pol in "${POLICIES[@]}"; do
+        bin="bin/champsim_4core_${pf}_${pol}"
+        echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/mix1_het_${pf}_${pol}.txt|${GCC} ${MCF} ${PERL} ${OMNET}" >> "${QUEUE_FILE}"
+    done
+done
+
+for pf in "${PREFETCHERS[@]}"; do
+    for pol in "${POLICIES[@]}"; do
+        bin="bin/champsim_4core_${pf}_${pol}"
+        echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/mix2_mcf4_${pf}_${pol}.txt|${MCF} ${MCF} ${MCF} ${MCF}" >> "${QUEUE_FILE}"
+        if [ "${MODE}" = "--full" ] || [ "${MODE}" = "full" ]; then
+            echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/mix3_reg4_${pf}_${pol}.txt|${GCC} ${GCC} ${PERL} ${PERL}" >> "${QUEUE_FILE}"
+            echo "${bin}|${WARMUP}|${SIM_INST}|${RESULTS_DIR}/mix4_asym_${pf}_${pol}.txt|${MCF} ${MCF} ${OMNET} ${GCC}" >> "${QUEUE_FILE}"
+        fi
+    done
+done
 
 # 5. Execute queue with Python ThreadPoolExecutor (no xargs/export-f portability pitfalls)
 python3 - "${QUEUE_FILE}" "${JOBS}" <<'PYEOF'
