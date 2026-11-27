@@ -38,6 +38,7 @@ enum class PolicyType {
     BASELINE_SRRIP,
     DRRIP,
     SHIP,
+    PACMAN,
     PREFETCH_AWARE_LRU,
     PREFETCH_AWARE_SRRIP,
     PREFETCH_AWARE_ADAPTIVE
@@ -49,6 +50,7 @@ std::string policy_name(PolicyType p) {
         case PolicyType::BASELINE_SRRIP: return "Baseline SRRIP";
         case PolicyType::DRRIP: return "DRRIP (Set Dueling)";
         case PolicyType::SHIP: return "SHiP";
+        case PolicyType::PACMAN: return "PACMan-HM (MICRO'11)";
         case PolicyType::PREFETCH_AWARE_LRU: return "Prefetch-Aware LRU";
         case PolicyType::PREFETCH_AWARE_SRRIP: return "Prefetch-Aware SRRIP";
         case PolicyType::PREFETCH_AWARE_ADAPTIVE: return "PA-Adaptive SRRIP";
@@ -149,6 +151,11 @@ public:
             // Policy Hit Updates
             if (policy == PolicyType::BASELINE_LRU || policy == PolicyType::PREFETCH_AWARE_LRU) {
                 line.last_used_cycle = global_cycle;
+            } else if (policy == PolicyType::PACMAN) {
+                // PACMan-H: only promote on non-prefetch (demand) hits
+                if (req.type != AccessType::PREFETCH) {
+                    line.rrpv = 0;
+                }
             } else if (policy == PolicyType::BASELINE_SRRIP || policy == PolicyType::PREFETCH_AWARE_SRRIP || policy == PolicyType::DRRIP || policy == PolicyType::PREFETCH_AWARE_ADAPTIVE) {
                 line.rrpv = 0;
             } else if (policy == PolicyType::SHIP) {
@@ -197,7 +204,7 @@ public:
                     line.last_used_cycle = min_c + 1; // Low priority (near LRU)
                 } else if (policy == PolicyType::BASELINE_SRRIP) {
                     line.rrpv = 2;
-                } else if (policy == PolicyType::PREFETCH_AWARE_SRRIP) {
+                } else if (policy == PolicyType::PREFETCH_AWARE_SRRIP || policy == PolicyType::PACMAN) {
                     line.rrpv = 3; // Distant priority
                 } else if (policy == PolicyType::PREFETCH_AWARE_ADAPTIVE) {
                     line.rrpv = (confidence_counter >= 32) ? 2 : 3;
@@ -211,7 +218,7 @@ public:
                 line.is_prefetched = false;
                 if (policy == PolicyType::BASELINE_LRU || policy == PolicyType::PREFETCH_AWARE_LRU) {
                     line.last_used_cycle = global_cycle;
-                } else if (policy == PolicyType::BASELINE_SRRIP || policy == PolicyType::PREFETCH_AWARE_SRRIP || policy == PolicyType::PREFETCH_AWARE_ADAPTIVE) {
+                } else if (policy == PolicyType::BASELINE_SRRIP || policy == PolicyType::PREFETCH_AWARE_SRRIP || policy == PolicyType::PREFETCH_AWARE_ADAPTIVE || policy == PolicyType::PACMAN) {
                     line.rrpv = 2;
                 } else if (policy == PolicyType::DRRIP) {
                     line.rrpv = get_drrip_rrpv(set);
@@ -423,6 +430,7 @@ int main() {
         PolicyType::BASELINE_SRRIP,
         PolicyType::DRRIP,
         PolicyType::SHIP,
+        PolicyType::PACMAN,
         PolicyType::PREFETCH_AWARE_LRU,
         PolicyType::PREFETCH_AWARE_SRRIP,
         PolicyType::PREFETCH_AWARE_ADAPTIVE
