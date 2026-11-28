@@ -55,7 +55,13 @@ void rrip_prefetch_adaptive::replacement_cache_fill(uint32_t triggering_cpu, lon
     prefetch_fills++;
     is_prefetched.at(index) = true;
     // Dynamic demotion: high confidence keeps useful stream (RRPV=2); low confidence quarantines (RRPV=3)
-    rrpv.at(index) = (confidence_counter >= 32) ? (MAX_RRPV - 1) : MAX_RRPV;
+    if (confidence_counter >= 32) {
+      pf_streaming_fills++;
+      rrpv.at(index) = MAX_RRPV - 1;
+    } else {
+      pf_filtering_fills++;
+      rrpv.at(index) = MAX_RRPV;
+    }
   } else {
     demand_fills++;
     is_prefetched.at(index) = false;
@@ -89,7 +95,10 @@ void rrip_prefetch_adaptive::replacement_final_stats()
   std::cout << "Prefetch blocks promoted (useful): " << prefetch_promoted << std::endl;
   std::cout << "Unused prefetch evictions: " << prefetch_demoted_evictions << std::endl;
   std::cout << "Final Confidence Counter: " << confidence_counter << " / 63" << std::endl;
+  std::cout << "Prefetch fills in Streaming Mode (C >= 32): " << pf_streaming_fills << std::endl;
+  std::cout << "Prefetch fills in Filtering Mode (C < 32): " << pf_filtering_fills << std::endl;
   if (prefetch_fills > 0) {
+    std::cout << "Fraction of PF fills in Streaming Mode: " << (100.0 * pf_streaming_fills / prefetch_fills) << "%" << std::endl;
     std::cout << "Prefetch usefulness: " << (100.0 * prefetch_promoted / prefetch_fills) << "%" << std::endl;
   }
   std::cout << "=======================================================" << std::endl;

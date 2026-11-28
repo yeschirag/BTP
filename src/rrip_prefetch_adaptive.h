@@ -23,6 +23,8 @@ class rrip_prefetch_adaptive : public champsim::modules::replacement
   uint64_t demand_fills = 0;
   uint64_t prefetch_promoted = 0;
   uint64_t prefetch_demoted_evictions = 0;
+  uint64_t pf_streaming_fills = 0;
+  uint64_t pf_filtering_fills = 0;
 
 public:
   explicit rrip_prefetch_adaptive(CACHE* cache);

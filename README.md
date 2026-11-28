@@ -33,7 +33,7 @@ All 8 replacement policies were run under **identical L2C prefetchers** (`va_amp
 | **PA-Adaptive (Ours)** | 2.0470 | **0.0951** | 1.8310 | **0.2921** | **0.9183** | **0.9135** | **1,110,610** | 0.75 B* / 16 KB |
 | SHiP (ISCA'11) | 2.0540 | 0.0986 | 1.8360 | 0.3157 | 0.9447 | 0.9429 | 1,066,144 | 2,048 B + sampler |
 
-- **Zero-Overhead Frontier:** `PA-SRRIP` beats `LRU`, `SRRIP`, `DRRIP`, and `PA-LRU` in heterogeneous contention at **0 extra hardware bits** (restoring `omnetpp` from `0.2770` under `SRRIP` to `0.2923` while matching `PACMan-HM`).
+- **Zero-SRAM Frontier (`PA-SRRIP` $\equiv$ `PACMan-M`):** `PA-SRRIP` reproduces `PACMan-M` at **0 extra hardware bits**, tying `PACMan-HM` within `0.05%` on heterogeneous misses (`1,109,658` vs `1,109,056`) and recovering `omnetpp` to LRU-level (`0.2923` vs `0.2895`). (`SHiP` leads unconstrained at `2,048 B+` SRAM.)
 - **Honest Failure-Mode Finding (`mcf x 4`):** When `mcf` L2 prefetch accuracy sits at `28.9–32.3%`, unconditional `RRPV = 3` demotion (`PA-SRRIP`, `PACMan-HM`: `WS 0.7143`) trails `SRRIP` (`0.7248`) and `DRRIP` (`0.7367`), and L2 hit absorption keeps LLC prefetch hits `<3%`, driving `PA-Adaptive` to collapse toward `PA-SRRIP`.
 
 ---
