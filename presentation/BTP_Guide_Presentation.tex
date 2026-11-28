@@ -163,7 +163,7 @@
         {\footnotesize\textbf{\color{Obsidian}Irregular Co-Runners (\texttt{mcf}, \texttt{omnetpp})}}\par\vspace{0.08cm}
         \begin{itemize}\setlength{\itemsep}{0.22em}\scriptsize
           \item \textbf{Memory Locality:} Linked pointer chasing and irregular heap traversals (\texttt{IPC} $\approx 0.08\text{--}0.34$).
-          \item \textbf{Prefetch Accuracy:} Decoupled L2 accuracy is $27\text{--}32\%$; $\sim 68\text{--}73\%$ of prefetches receive no L2 reuse.
+          \item \textbf{Prefetch Accuracy:} On \texttt{mcf x 4}, decoupled L2 accuracy is $29\text{--}32\%$; $\sim 68\text{--}71\%$ of prefetches receive no L2 reuse (mix-1 is aggregated across 4 cores).
           \item \textbf{Set Churn:} High volume of unreferenced prefetch fills circulates through shared LLC ways.
         \end{itemize}
       \end{tcolorbox}
@@ -194,7 +194,7 @@
     \hfill%
     \begin{column}{0.32\textwidth}
       \begin{tcolorbox}[cleanpanel]
-        {\footnotesize\textbf{\color{Obsidian}DRRIP / PACMan (MICRO'11)}}\par\vspace{0.05cm}
+        {\footnotesize\textbf{\color{Obsidian}DRRIP (ISCA'10) / PACMan (MICRO'11)}}\par\vspace{0.05cm}
         \scriptsize
         \texttt{PACMan-M} inserts prefetches at $RRPV=3$; \texttt{PACMan-HM} also suppresses prefetch-hit promotion; \texttt{Dyn} adds set dueling.
       \end{tcolorbox}
@@ -232,76 +232,16 @@
 \end{frame}
 
 % -----------------------------------------------------------------------------
-% Slide 4: PA-SRRIP Horizontal Decision Pipeline
+% [CUT FOR 9-SLIDE DECK] Old Slide 4: PA-SRRIP Horizontal Decision Pipeline
 % -----------------------------------------------------------------------------
-\begin{frame}{3. PA-SRRIP ($\equiv$ PACMan-M): Wire-Level Fill Classification}
-  \vspace{-0.18cm}
-  \centering
-  \resizebox{0.98\linewidth}{!}{%
-  \begin{tikzpicture}[
-    scale=0.88, every node/.style={transform shape},
-    stage_box/.style={rectangle, draw=LineRule, fill=Surface, rounded corners=0.6mm, line width=0.8pt, minimum width=2.4cm, minimum height=0.82cm, align=center, font=\scriptsize},
-    hit_box/.style={rectangle, draw=SlateTeal, fill=SlateTeal!8, rounded corners=0.6mm, line width=0.9pt, minimum width=2.5cm, minimum height=0.82cm, align=center, font=\scriptsize},
-    miss_box/.style={rectangle, draw=NavyPrimary, fill=NavyPrimary!7, rounded corners=0.6mm, line width=0.9pt, minimum width=2.9cm, minimum height=0.82cm, align=center, font=\scriptsize},
-    evict_box/.style={rectangle, draw=MutedRose, fill=MutedRose!7, rounded corners=0.6mm, line width=0.9pt, minimum width=2.3cm, minimum height=0.82cm, align=center, font=\scriptsize},
-    arr/.style={draw=Obsidian, -{Stealth[length=2.3mm]}, thick},
-    hit_arr/.style={draw=SlateTeal, -{Stealth[length=2.3mm]}, thick},
-    miss_arr/.style={draw=NavyPrimary, -{Stealth[length=2.3mm]}, thick},
-    pf_arr/.style={draw=MutedRose, -{Stealth[length=2.3mm]}, thick}
-  ]
-    \node [stage_box] (req) at (0, 0) {\textbf{Transaction Ingress}\\LLC Bus Request\\(\texttt{addr}, \texttt{set}, \texttt{type})};
-    \node [stage_box, right=0.85cm of req] (probe) {\textbf{LLC Tag Lookup}\\Compare 16 Ways\\(Scan from Way 0)};
-
-    \node [hit_box, above right=0.52cm and 1.05cm of probe] (hit_prom) {\textbf{Hit Promotion}\\Set $RRPV \leftarrow 0$ (MRU)\\(\texttt{type != WRITE})};
-    \node [hit_box, right=0.95cm of hit_prom] (hit_serve) {\textbf{Serve Core Data}\\20-Cycle LLC Hit\\Full Retention};
-
-    \node [miss_box, below right=0.52cm and 1.05cm of probe] (victim_unit) {\textbf{Victim Selection Unit}\\\textbullet~First way from 0 with $RRPV == 3$\\\textbullet~Else age set ($+1$) until $RRPV == 3$};
-    \node [evict_box, right=0.95cm of victim_unit] (evict) {\textbf{Evict Victim}\\Replace Way\\with $RRPV = 3$};
-    \node [stage_box, right=0.85cm of evict] (wire_check) {\textbf{Inspect Fill Wire}\\(\texttt{fill.type})};
-
-    \node [hit_box, above right=0.35cm and 0.85cm of wire_check] (demand_fill) {\textbf{Demand Fill}\\Insert at \textbf{$RRPV = 2$}\\(Long Protection)};
-    \node [evict_box, below right=0.35cm and 0.85cm of wire_check] (pf_fill) {\textbf{Prefetch Fill}\\Insert at \textbf{$RRPV = 3$}\\(Next Victim)};
-
-    \draw [arr] (req) -- (probe);
-    \draw [hit_arr] (probe) |- node[above, pos=0.75, font=\tiny\bfseries\color{SlateTeal}] {TAG HIT} (hit_prom);
-    \draw [hit_arr] (hit_prom) -- (hit_serve);
-    \draw [miss_arr] (probe) |- node[below, pos=0.75, font=\tiny\bfseries\color{NavyPrimary}] {TAG MISS} (victim_unit);
-    \draw [miss_arr] (victim_unit) -- node[above, font=\tiny\bfseries\color{Obsidian}] {Victim} (evict);
-    \draw [arr] (evict) -- (wire_check);
-    \draw [hit_arr] (wire_check) |- node[above, pos=0.70, font=\tiny\bfseries\color{SlateTeal}] {Demand} (demand_fill);
-    \draw [pf_arr] (wire_check) |- node[below, pos=0.70, font=\tiny\bfseries\color{MutedRose}] {Prefetch} (pf_fill);
-  \end{tikzpicture}%
-  }
-
-  \vspace{0.18cm}
-  \begin{columns}[onlytextwidth]
-    \begin{column}{0.32\textwidth}
-      \begin{tcolorbox}[archpanel, top=1.0mm, bottom=1.0mm]
-        {\scriptsize\textbf{\color{Obsidian}1. Zero-SRAM-Metadata Control}}\par\vspace{0.02cm}
-        {\tiny Reads existing \texttt{fill.type} bus signal on fill. Eviction logic never reads \texttt{is\_prefetched}.}
-      \end{tcolorbox}
-    \end{column}%
-    \hfill%
-    \begin{column}{0.32\textwidth}
-      \begin{tcolorbox}[archpanel, top=1.0mm, bottom=1.0mm]
-        {\scriptsize\textbf{\color{Obsidian}2. Speculative Quarantine}}\par\vspace{0.02cm}
-        {\tiny Unreferenced prefetches enter at $RRPV=3$ and self-evict on subsequent misses without aging demand lines.}
-      \end{tcolorbox}
-    \end{column}%
-    \hfill%
-    \begin{column}{0.32\textwidth}
-      \begin{tcolorbox}[tealpanel, top=1.0mm, bottom=1.0mm]
-        {\scriptsize\textbf{\color{Obsidian}3. Demand Recovery}}\par\vspace{0.02cm}
-        {\tiny Useful prefetches accessed prior to eviction promote to $RRPV=0$ on first hit, matching demand priority.}
-      \end{tcolorbox}
-    \end{column}
-  \end{columns}
-\end{frame}
+% \begin{frame}{3. PA-SRRIP ($\equiv$ PACMan-M): Wire-Level Fill Classification}
+% ... (commented out: trace on next slide + paper pseudocode cover algorithm)
+% \end{frame}
 
 % -----------------------------------------------------------------------------
-% Slide 5: 4-State RRPV Machine \& Corrected Way-0-First Set Trace
+% Page 4: 4-State RRPV Machine & Corrected Way-0-First Set Trace
 % -----------------------------------------------------------------------------
-\begin{frame}{4. State Transitions \& Set Quarantine Walkthrough}
+\begin{frame}{3. State Transitions \& Set Quarantine Walkthrough}
   \vspace{-0.15cm}
   \begin{columns}[onlytextwidth]
     \begin{column}{0.485\textwidth}
@@ -364,7 +304,7 @@
 % -----------------------------------------------------------------------------
 % Slide 6: PA-Adaptive \& Honest Novelty Positioning vs PACMan
 % -----------------------------------------------------------------------------
-\begin{frame}{5. PA-Adaptive Design \& Comparison to PACMan (MICRO'11)}
+\begin{frame}{4. PA-Adaptive Design \& Comparison to PACMan (MICRO'11)}
   \vspace{-0.15cm}
   \begin{columns}[onlytextwidth]
     \begin{column}{0.46\textwidth}
@@ -413,7 +353,7 @@
 % -----------------------------------------------------------------------------
 % Slide 7: Matched Experimental Grid \& Methodology Note
 % -----------------------------------------------------------------------------
-\begin{frame}{6. Matched Experimental Grid \& Equivalence Controls}
+\begin{frame}{5. Matched Experimental Grid \& Equivalence Controls}
   \vspace{-0.15cm}
   \begin{columns}[t, onlytextwidth]
     \begin{column}{0.485\textwidth}
@@ -452,7 +392,7 @@
 % -----------------------------------------------------------------------------
 % Slide 8: Heterogeneous Mix Results (Zero-based % chart + exact rounding)
 % -----------------------------------------------------------------------------
-\begin{frame}{7. Results: Heterogeneous Contention Mix (4-Core)}
+\begin{frame}{6. Results: Heterogeneous Contention Mix (4-Core)}
   \vspace{-0.15cm}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.53\textwidth}
@@ -476,7 +416,7 @@
 % -----------------------------------------------------------------------------
 % Slide 9: Stress Test \& Honest Failure-Mode Diagnosis
 % -----------------------------------------------------------------------------
-\begin{frame}{8. Stress Test (\texttt{mcf x 4}) \& Microarchitectural Diagnosis}
+\begin{frame}{7. Stress Test (\texttt{mcf x 4}) \& Microarchitectural Diagnosis}
   \vspace{-0.15cm}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.53\textwidth}
@@ -493,7 +433,7 @@
           \item \textbf{Misses Do Not Map 1-to-1 to IPC:}\\
             On \texttt{mcf x 4}, \texttt{DRRIP} incurs \emph{more} demand misses than \texttt{SRRIP*} (\texttt{2.854M} vs \texttt{2.835M}) yet higher IPC (\texttt{0.0806} vs \texttt{0.0793}).
           \item \textbf{Why \texttt{PA-Adaptive} Ties \texttt{PA-SRRIP}:}\\
-            L2 absorbs timely hits first; under circular $RRPV=3$ reuse ($p\approx 2\text{--}3\%$), counter drift $\mathbb{E}[\Delta C]<0$ is predicted to stay below 32.
+            L2 absorbs timely hits first; under circular $RRPV=3$ reuse ($p\approx 2\text{--}3\%$ from earlier 20M runs), counter drift $\mathbb{E}[\Delta C]<0$ is predicted to stay below 32.
         \end{itemize}
       \end{tcolorbox}
     \end{column}
@@ -503,75 +443,28 @@
 % -----------------------------------------------------------------------------
 % Slide 10: Cost-Performance Frontier vs SHiP
 % -----------------------------------------------------------------------------
-\begin{frame}{9. Cost-Performance Frontier: Zero-SRAM vs. SHiP (2 KB)}
-  \vspace{-0.15cm}
-  \begin{columns}[c, onlytextwidth]
-    \begin{column}{0.52\textwidth}
-      \centering
-      \includegraphics[width=\linewidth,height=4.2cm,keepaspectratio]{chart_storage_vs_misses.png}
-    \end{column}%
-    \hfill%
-    \begin{column}{0.46\textwidth}
-      \begin{tcolorbox}[tealpanel, top=1.2mm, bottom=1.2mm]
-        {\footnotesize\textbf{\color{Obsidian}Scoped Architectural Positioning}}\par\vspace{0.05cm}
-        \begin{itemize}\setlength{\itemsep}{0.15em}\scriptsize
-          \item \textbf{\texttt{SHiP} (2\,KB SRAM) Wins Unconstrained:} Learning dead-on-arrival demand PCs cuts Mix 1 misses by \textbf{11.8\%} (\texttt{1.066M}, WS \texttt{0.9447}).
-          \item \textbf{Zero-Metadata Frontier (0\,Bytes):} On Mix 1 (\texttt{va\_ampm\_lite}), \texttt{PA-SRRIP} (\texttt{1,109,658}) \textbf{ties \texttt{PACMan-HM}} (\texttt{1,109,056}, within \textbf{0.05\%}) as the best zero-metadata policy (-8.2\% misses vs \texttt{LRU}).
-          \item \textbf{\texttt{PA-LRU} (\texttt{1.190M}, WS \texttt{0.9071}):} Marginally trails SRRIP-based zero-bit policies, likely because \texttt{LRU} lacks an intermediate insertion point ($RRPV=2$).
-        \end{itemize}
-      \end{tcolorbox}
-    \end{column}
-  \end{columns}
-\end{frame}
+% -----------------------------------------------------------------------------
+% [CUT FOR 9-SLIDE DECK] Old Slide 10 (SHiP Frontier) & Old Slide 11 (Limitations)
+% - SHiP result shown on Page 7 chart; storage cost on Page 3.
+% - Limitations summary moved into Page 9 takeaway/scope strip below.
+% -----------------------------------------------------------------------------
+% \begin{frame}{9. Cost-Performance Frontier: Zero-SRAM vs. SHiP (2 KB)}
+%   ...
+% \end{frame}
+% \begin{frame}{10. Limitations \& Threats to Methodology Validity}
+%   ...
+% \end{frame}
 
 % -----------------------------------------------------------------------------
-% Slide 11: Explicit Limitations \& Threats to Validity
+% Page 9: Future Extensions \& Conclusions + Scope
 % -----------------------------------------------------------------------------
-\begin{frame}{10. Limitations \& Threats to Methodology Validity}
-  \vspace{-0.15cm}
+\begin{frame}{8. Engineering Extensions \& Conclusions}
+  \vspace{-0.18cm}
   \begin{columns}[t, onlytextwidth]
     \begin{column}{0.485\textwidth}
-      \begin{tcolorbox}[archpanel]
-        {\small\textbf{\color{Obsidian}Simulation Horizon \& Workload Breadth}}\par\vspace{0.06cm}
-        \begin{itemize}\setlength{\itemsep}{0.18em}\footnotesize
-          \item \textbf{Short Execution Window:}\\
-            \texttt{1M} warmup + \texttt{5M} simulation instructions per core (chosen for $<4$\,h cluster turnaround) is thin relative to an 8\,MB LLC ($131,072$ blocks).
-          \item \textbf{Limited Mix \& Trace Coverage:}\\
-            Evaluated two mixes (\texttt{mix1\_het}, \texttt{mix2\_mcf4}), a single SimPoint slice per SPEC benchmark, and one fixed 4-core OoO cache/DRAM configuration.
-        \end{itemize}
-      \end{tcolorbox}
-    \end{column}%
-    \hfill%
-    \begin{column}{0.485\textwidth}
-      \begin{tcolorbox}[tealpanel]
-        {\small\textbf{\color{Obsidian}Comparator \& Mechanism Caveats}}\par\vspace{0.06cm}
-        \begin{itemize}\setlength{\itemsep}{0.18em}\footnotesize
-          \item \textbf{Stock \texttt{SRRIP} Writeback Confound:}\\
-            Baseline \texttt{srrip.cc} promotes \texttt{WRITE} hits (\texttt{0.12\%} delta in \texttt{nopf}). A guarded-SRRIP comparator run isolates pure prefetch awareness without that confound.
-          \item \textbf{Adaptive Controller Negative Result:}\\
-            \texttt{PA-Adaptive} adds essentially zero measurable IPC benefit over static \texttt{PA-SRRIP} (\texttt{0.9183} vs \texttt{0.9182}), while costing 1\,bit/line unless reusing an existing PMU flag.
-        \end{itemize}
-      \end{tcolorbox}
-    \end{column}
-  \end{columns}
-
-  \vspace{0.16cm}
-  \begin{tcolorbox}[summarystrip]
-    \centering\scriptsize
-    \textbf{\color{NavyPrimary}Scope Statement:} Quantitative deltas between \texttt{0.7\%} and \texttt{2.0\%} over a 5M window require 50M--100M validation before claiming broad generalization across diverse multicore workloads.
-  \end{tcolorbox}
-\end{frame}
-
-% -----------------------------------------------------------------------------
-% Slide 12: Future Extensions \& Sober Conclusions
-% -----------------------------------------------------------------------------
-\begin{frame}{11. Engineering Extensions \& Conclusions}
-  \vspace{-0.15cm}
-  \begin{columns}[t, onlytextwidth]
-    \begin{column}{0.485\textwidth}
-      \begin{tcolorbox}[archpanel]
-        {\small\textbf{\color{Obsidian}Concrete Next Engineering Steps}}\par\vspace{0.06cm}
-        \begin{enumerate}\setlength{\itemsep}{0.16em}\footnotesize
+      \begin{tcolorbox}[archpanel, top=1.1mm, bottom=1.1mm]
+        {\footnotesize\textbf{\color{Obsidian}Concrete Next Engineering Steps}}\par\vspace{0.05cm}
+        \begin{enumerate}\setlength{\itemsep}{0.12em}\scriptsize
           \item \textbf{L2-to-LLC Usefulness Hinting:}\\
             Forward L2 \texttt{pf\_useful} feedback down to \texttt{PA-Adaptive} so symmetric \texttt{mcf x 4} stays in $RRPV=2$ instead of collapsing toward $RRPV=3$.
           \item \textbf{Evaluate \texttt{PACMan-Dyn}:}\\
@@ -583,13 +476,13 @@
     \end{column}%
     \hfill%
     \begin{column}{0.485\textwidth}
-      \begin{tcolorbox}[tealpanel]
-        {\small\textbf{\color{Obsidian}Verified Summary of Contributions}}\par\vspace{0.06cm}
-        \begin{itemize}\setlength{\itemsep}{0.16em}\footnotesize
+      \begin{tcolorbox}[tealpanel, top=1.1mm, bottom=1.1mm]
+        {\footnotesize\textbf{\color{Obsidian}Summary of Contributions}}\par\vspace{0.05cm}
+        \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
           \item \textbf{Zero-SRAM Heterogeneous Improvement:}\\
             \texttt{PA-SRRIP} delivers \textbf{0.9182} Weighted Speedup (\textbf{+1.74\%} vs \texttt{LRU}, \textbf{+1.19\%} vs stock \texttt{SRRIP*}) on \texttt{mix1\_het} and recovers \texttt{omnetpp} to \texttt{0.2923}.
           \item \textbf{Matched Cross-Prefetcher Rigor:}\\
-            Verified across both \texttt{va\_ampm\_lite} and \texttt{ip\_stride} against \texttt{SRRIP*}, \texttt{DRRIP}, \texttt{PACMan-HM}, and \texttt{SHiP}.
+            Evaluated across both \texttt{va\_ampm\_lite} and \texttt{ip\_stride} against \texttt{SRRIP*}, \texttt{DRRIP}, \texttt{PACMan-HM}, and \texttt{SHiP}.
           \item \textbf{Storage \& Negative-Result Audit:}\\
             Exposed standalone \texttt{16\,KB} bit cost in \texttt{PA-Adaptive} and diagnosed its L2-absorption collapse on \texttt{mcf x 4}.
         \end{itemize}
@@ -598,9 +491,10 @@
   \end{columns}
 
   \vspace{0.08cm}
-  \begin{tcolorbox}[summarystrip, top=1.0mm, bottom=1.0mm]
-    \centering\footnotesize
-    \textbf{\color{NavyPrimary}Thesis Takeaway:} \texttt{PA-SRRIP} reproduces the zero-SRAM prefetch-demotion point (\texttt{PACMan-M}), with verified gains limited to heterogeneous mixes while \texttt{DRRIP}/\texttt{SHiP} lead under symmetric thrashing.
+  \begin{tcolorbox}[summarystrip, top=0.9mm, bottom=0.9mm]
+    \scriptsize
+    \textbf{\color{NavyPrimary}Takeaway:} \texttt{PA-SRRIP} reproduces the zero-SRAM prefetch-demotion point (\texttt{PACMan-M}), with gains limited to heterogeneous mixes while \texttt{DRRIP}/\texttt{SHiP} lead under symmetric thrashing.\\[0.05cm]
+    \textbf{\color{Obsidian}Scope:} 5M-instruction window, 2 mixes, 1 SimPoint each; deltas of 0.7--2\% need 50--100M validation. \texttt{PA-Adaptive} adds no measurable gain over \texttt{PA-SRRIP}.
   \end{tcolorbox}
 \end{frame}
 
