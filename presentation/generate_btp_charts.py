@@ -17,7 +17,7 @@ with open(DATA_PATH, "r") as f:
 
 plt.rcParams.update({
     "font.family": "sans-serif",
-    "font.sans-serif": ["Fira Sans", "Helvetica", "Arial", "DejaVu Sans"],
+    "font.sans-serif": ["Inter", "Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"],
     "axes.edgecolor": "#CBD5E1",
     "axes.linewidth": 0.8,
     "axes.grid": True,
