@@ -26,15 +26,16 @@ All 8 replacement policies were run under **identical L2C prefetchers** (`va_amp
 | Policy | `gcc` | `mcf` | `perlbench` | `omnetpp` | Weighted Speedup | Harmonic Speedup | LLC Demand Misses | Extra Storage |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|
 | Baseline LRU | 2.0600 | 0.0881 | 1.8340 | 0.2895 | 0.9025 | 0.8943 | 1,208,550 | 0 B |
-| Baseline SRRIP | 2.0340 | 0.0956 | 1.8330 | 0.2770 | 0.9074 | 0.9003 | 1,124,384 | 0 B |
+| Baseline SRRIP (Stock) | 2.0340 | 0.0956 | 1.8330 | 0.2770 | 0.9074 | 0.9003 | 1,124,384 | 0 B |
+| **Baseline SRRIP-G (Guarded)** | 2.0530 | 0.0936 | 1.8320 | 0.2889 | 0.9134 | 0.9076 | 1,128,330 | 0 B |
 | DRRIP | 2.0580 | 0.0901 | 1.8340 | 0.2899 | 0.9071 | 0.9001 | 1,185,074 | ~16 B |
 | PACMan-HM | 2.0460 | 0.0951 | 1.8330 | 0.2917 | 0.9182 | 0.9133 | 1,109,056 | 0 B |
-| **PA-SRRIP (Ours)** | 2.0420 | **0.0952** | 1.8320 | **0.2923** | **0.9182** | **0.9135** | **1,109,658** | **0 B (Strictly)** |
+| **PA-SRRIP (Ours ≡ PACMan-M)** | 2.0420 | **0.0952** | 1.8320 | **0.2923** | **0.9182** | **0.9135** | **1,109,658** | **0 B (Strictly)** |
 | **PA-Adaptive (Ours)** | 2.0470 | **0.0951** | 1.8310 | **0.2921** | **0.9183** | **0.9135** | **1,110,610** | 0.75 B* / 16 KB |
 | SHiP (ISCA'11) | 2.0540 | 0.0986 | 1.8360 | 0.3157 | 0.9447 | 0.9429 | 1,066,144 | 2,048 B + sampler |
 
-- **Zero-SRAM Frontier (`PA-SRRIP` $\equiv$ `PACMan-M`):** `PA-SRRIP` reproduces `PACMan-M` at **0 extra hardware bits**, tying `PACMan-HM` within `0.05%` on heterogeneous misses (`1,109,658` vs `1,109,056`) and recovering `omnetpp` to LRU-level (`0.2923` vs `0.2895`). (`SHiP` leads unconstrained at `2,048 B+` SRAM.)
-- **Honest Failure-Mode Finding (`mcf x 4`):** When `mcf` L2 prefetch accuracy sits at `28.9–32.3%`, unconditional `RRPV = 3` demotion (`PA-SRRIP`, `PACMan-HM`: `WS 0.7143`) trails `SRRIP` (`0.7248`) and `DRRIP` (`0.7367`), and L2 hit absorption keeps LLC prefetch hits `<3%`, driving `PA-Adaptive` to collapse toward `PA-SRRIP`.
+- **Zero-SRAM Frontier (`PA-SRRIP` $\equiv$ `PACMan-M`):** Over a fair writeback-guarded `SRRIP-G` baseline, `PA-SRRIP` preserves a genuine **`+0.53%`** Weighted Speedup (`-18,672` misses) under `va_ampm_lite`, whereas under `ip_stride` (`0.9172` vs `0.9167`, `+0.06%`) the writeback guard accounted for the apparent stock-SRRIP gap. Prefetcher-OFF `srrip_guarded` matches `PA-SRRIP` bit-for-bit (`1,148,368 == 1,148,368` misses). (`SHiP` leads unconstrained at `2,048 B+` SRAM.)
+- **Confirmed `PA-Adaptive` Collapse & `mcf x 4` Failure Mode:** Logged telemetry measures `Final Counter = 0/63` (`6.5%–7.0%` Streaming Mode under `va_ampm_lite`; `1.0%–13.9%` under `ip_stride`), confirming `86%–99%` of fills hit `RRPV = 3` Filtering Mode. On `mcf x 4`, L2 prefetcher accuracy is `28.9%–32.3%`, so unconditional `RRPV = 3` demotion (`0.7143`) trails `SRRIP` (`0.7248`) and `DRRIP` (`0.7367`).
 
 ---
 

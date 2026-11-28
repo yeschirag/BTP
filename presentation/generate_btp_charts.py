@@ -36,9 +36,10 @@ C_SOTA = "#0F172A"   # Obsidian Navy
 LABELS = ["LRU", "SRRIP*", "DRRIP", "SHiP\n(2KB)", "PACMan\n-HM", "PA-LRU\n(Ours)", "PA-SRRIP\n(Ours)", "PA-Adapt\n(Ours)"]
 
 
-def make_pct_speedup_chart(mix_key: str, title: str, ylim: tuple, out_name: str):
-    ampm = DATA["va_ampm_lite"][mix_key]
-    ips  = DATA["ip_stride"][mix_key]
+def make_pct_speedup_chart(mix_key: str, title: str, ylim: tuple, out_name: str, use_guarded_srrip: bool = False):
+    ampm = [r for r in DATA["va_ampm_lite"][mix_key] if (r["key"] != ("srrip" if use_guarded_srrip else "srrip_guarded"))]
+    ips  = [r for r in DATA["ip_stride"][mix_key]    if (r["key"] != ("srrip" if use_guarded_srrip else "srrip_guarded"))]
+    labels = ["LRU", "SRRIP-G" if use_guarded_srrip else "SRRIP*", "DRRIP", "SHiP\n(2KB)", "PACMan\n-HM", "PA-LRU\n(Ours)", "PA-SRRIP\n(Ours)", "PA-Adapt\n(Ours)"]
 
     base_ampm = ampm[0]["ws"]
     base_ips  = ips[0]["ws"]
@@ -46,7 +47,7 @@ def make_pct_speedup_chart(mix_key: str, title: str, ylim: tuple, out_name: str)
     pct_ampm = [((r["ws"] / base_ampm) - 1.0) * 100.0 for r in ampm]
     pct_ips  = [((r["ws"] / base_ips) - 1.0) * 100.0 for r in ips]
 
-    x = np.arange(len(LABELS))
+    x = np.arange(len(labels))
     w = 0.36
 
     fig, ax = plt.subplots(figsize=(7.0, 3.4), dpi=300)
@@ -63,7 +64,7 @@ def make_pct_speedup_chart(mix_key: str, title: str, ylim: tuple, out_name: str)
     ax.set_ylabel("Weighted Speedup vs. LRU (%)", fontsize=8.8, fontweight="bold", color="#0F172A")
     ax.set_title(title + " (Zero-Based Scale)", fontsize=9.8, fontweight="bold", color="#0F172A", pad=10)
     ax.set_xticks(x)
-    ax.set_xticklabels(LABELS, fontsize=7.6, color="#1E293B")
+    ax.set_xticklabels(labels, fontsize=7.6, color="#1E293B")
     ax.set_ylim(*ylim)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -117,7 +118,7 @@ def make_frontier_chart():
 
 
 if __name__ == "__main__":
-    make_pct_speedup_chart("mix1_het", "Heterogeneous Mix (gcc + mcf + perl + omnet)", (-0.6, 5.8), "chart_mix1_speedup.png")
-    make_pct_speedup_chart("mix2_mcf4", "Contention Stress (mcf x 4 Pointer-Chasing)", (-0.8, 17.5), "chart_mix2_mcf4.png")
+    make_pct_speedup_chart("mix1_het", "Heterogeneous Mix (gcc + mcf + perl + omnet)", (-0.6, 5.8), "chart_mix1_speedup.png", use_guarded_srrip=True)
+    make_pct_speedup_chart("mix2_mcf4", "Contention Stress (mcf x 4 Pointer-Chasing)", (-0.8, 17.5), "chart_mix2_mcf4.png", use_guarded_srrip=False)
     make_frontier_chart()
     print("Generated zero-based % improvement charts cleanly.")

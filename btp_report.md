@@ -145,6 +145,33 @@ With L2 prefetchers disabled (`prefetcher = "no"`), `ctrl_nopf_pa_rrip` yields *
 | PA-SRRIP (Ours) | 0.0781 | +5.07% | 0.7151 | 0.7151 | 2,896,968 | 31.77% |
 | PA-Adaptive (Ours) | 0.0781 | +5.08% | 0.7152 | 0.7152 | 2,896,792 | 32.27% |
 
+### 4.3 Follow-Up Confound Isolation & Counter Telemetry (`srrip_guarded` & Logged `PA-Adaptive`)
+
+To eliminate the `access_type::WRITE` writeback-guard confound in stock ChampSim `srrip.cc` (`cache.h:515`) and replace counter drift predictions with direct measurements, 7 controlled validation runs (`1M` warmup / `5M` sim) were executed in parallel (`scripts/run_validation_patch.sh`):
+
+1. **Prefetcher-OFF Equivalence Proof (`L2C prefetcher = "no"`):**
+   - `val_nopf_srrip_guarded`: **`1,148,368` LLC demand misses** (`IPCs: gcc=1.994, perl=1.817, omnet=0.2795, mcf=0.09518`).
+   - Matches `ctrl_nopf_pa_rrip` (**`1,148,368` misses**) **bit-for-bit (`0.000%` delta)**, proving the `0.12%` stock-SRRIP discrepancy (`1,149,732`) came entirely from `srrip.cc` promoting `WRITE` writeback hits.
+
+2. **Fair Writeback-Guarded `SRRIP-G` vs. `PA-SRRIP` on `mix1_het`:**
+
+| L2 Prefetcher | Policy | `gcc` | `mcf` | `perl` | `omnet` | Weighted Speedup | Harmonic Speedup | LLC Demand Misses | `PA-SRRIP` vs `SRRIP-G` |
+|:---|:---|---:|---:|---:|---:|---:|---:|---:|:---|
+| `va_ampm_lite` | `SRRIP-G` (Guarded) | 2.0530 | 0.09357 | 1.8320 | 0.2889 | 0.9134 | 0.9076 | 1,128,330 | — |
+| `va_ampm_lite` | **`PA-SRRIP` (Ours)** | 2.0420 | **0.0952** | 1.8320 | **0.2923** | **0.9182** | **0.9135** | **1,109,658** | **`+0.53%` WS (`-18,672` misses)** |
+| `ip_stride` | `SRRIP-G` (Guarded) | 2.0080 | 0.09497 | 1.8210 | 0.2814 | 0.9167 | 0.9115 | 1,144,766 | — |
+| `ip_stride` | **`PA-SRRIP` (Ours)** | 2.0090 | 0.0951 | 1.8210 | 0.2816 | 0.9172 | 0.9121 | 1,143,828 | **`+0.06%` WS (`-938` misses)** |
+
+*Key Confound Finding:* With the `WRITE` guard added, **`ip_stride` shows virtual parity (`+0.06%`)**, meaning most of `PA-SRRIP`'s earlier edge over stock `srrip.cc` under `ip_stride` came from the writeback guard rather than prefetch awareness. Conversely, under the more aggressive **`va_ampm_lite`** prefetcher, **`PA-SRRIP` preserves a genuine `+0.53%` Weighted Speedup (`+0.65%` Harmonic, `-1.65%` misses)** over fair `SRRIP-G`.
+
+3. **Direct `PA-Adaptive` Counter Measurements:**
+   - `mix1_het` (`va_ampm_lite`): `Final Counter = 0 / 63` | Streaming Mode ($C \ge 32$): **`6.53%`** (`93.47%` Filtering Mode).
+   - `mix1_het` (`ip_stride`): `Final Counter = 19 / 63` | Streaming Mode ($C \ge 32$): **`13.86%`** (`86.14%` Filtering Mode).
+   - `mix2_mcf4` (`va_ampm_lite`): `Final Counter = 0 / 63` | Streaming Mode ($C \ge 32$): **`6.97%`** (`93.03%` Filtering Mode).
+   - `mix2_mcf4` (`ip_stride`): `Final Counter = 0 / 63` | Streaming Mode ($C \ge 32$): **`1.00%`** (`99.00%` Filtering Mode).
+
+   These direct measurements confirm the predicted negative counter drift: L2 hit absorption leaves too few residual LLC prefetch hits for the `+3/-1` rule to sustain $C \ge 32$, spending **`86.1%–99.0%`** of prefetch fills in `RRPV = 3` Filtering Mode.
+
 ---
 
 ## 5. Longitudinal & Historical Experimental Results (Complete Project Progression)
@@ -210,8 +237,8 @@ A standalone single-level C++ cache model (16-way sets, synthetic stride/pointer
 2. **Homogeneous Pointer-Chasing Inversion (`mix2_mcf4`):**  
    Under `mcf × 4`, both `PA-SRRIP` and `PACMan-HM` (`WS 0.7143`, `2,862,338` misses) **trail** `Baseline SRRIP` (`0.7248`, `2,834,660` misses) and `DRRIP` (`0.7367`). Independent L2C hardware telemetry shows `mcf`'s L2 prefetcher achieves **`28.9%–32.3%` accuracy**. Under 4-way symmetric contention, this is **consistent with** unconditional `RRPV = 3` quarantine evicting timely `mcf` prefetches before LLC reuse (+28K misses vs `SRRIP`). Also note that **miss counts do not map one-to-one to IPC**: `DRRIP` incurs *more* demand misses than `SRRIP` on `mcf × 4` (`2,854,058` vs `2,834,660`) yet achieves higher IPC (`0.0806` vs `0.0793`) due to memory-level parallelism and demand criticality differences.
 
-3. **Collapse of `PA-Adaptive` Toward Static Filtering (`PA-SRRIP`):**  
-   Across all 4 grid scenarios, `PA-Adaptive` yields virtually identical IPC to `PA-SRRIP` (`0.9183` vs `0.9182`, `0.7144` vs `0.7143`). *Plausible Explanation (Subject to Counter Instrumentation):* Although L2 prefetcher accuracy is `27–32%`, private L2 absorbs most timely hits before LLC lookup, and residual LLC promotion rate measured *under `RRPV=3` quarantine* is ~$2\text{--}3\%$ (note: this $p_{\text{hit,LLC}}$ metric is partly circular since `RRPV=3` shortens lifetime). Under a `+3/-1` LLC-only update rule, expected drift $\mathbb{E}[\Delta C] = 3(0.03) - 0.97 < 0$ is **predicted** to stay below threshold `32` (`Filtering Mode`). Instrumented telemetry (`scripts/run_validation_patch.sh`) directly logs `Final Counter` and `% Streaming Mode` to replace this prediction with measurement.
+3. **Confirmed Collapse of `PA-Adaptive` (`86%–99%` Filtering Mode):**  
+   Logged hardware telemetry from Section 4.3 confirms `confidence_counter` ends at **`0/63`** across `mcf × 4` and `mix1 (va_ampm_lite)` (and `19/63` on `ip_stride`), keeping **`86.1%–99.0%`** of prefetch fills in `RRPV = 3` Filtering Mode. Private L2 absorbs timely prefetch hits before LLC lookup, driving residual LLC promotion rates low enough that the `+3/-1` LLC-only counter collapses below threshold `32`. *Design insight:* Adaptive LLC prefetch controllers must either forward **L2 prefetch-usefulness signals** or scale reward asymmetries to residual LLC reuse rates.
 
 4. **Scoped Frontier Positioning (Zero-SRAM vs. `SHiP` `2 KB`):**  
    At `2,048 B+` SRAM overhead, `SHiP` dominates (`WS 0.9447 / 0.9463` on `mix1_het`, `0.7814 / 0.7851` on `mix2_mcf4`). **`PA-SRRIP` reproduces the zero-SRAM prefetch-demotion point (`PACMan-M`)**, tying `PACMan-HM` (within `0.05%` on misses) with gains limited to heterogeneous mixes, while conceding both symmetric contention (`DRRIP` / `SRRIP`) and unconstrained SRAM regimes (`SHiP`).

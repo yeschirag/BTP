@@ -374,9 +374,9 @@
         \begin{itemize}\setlength{\itemsep}{0.16em}\scriptsize
           \item \textbf{4-Core OoO Config:} 4.0\,GHz, 352-entry ROB, L1I 32\,KB, L1D 48\,KB, L2C 512\,KB, Shared LLC 8\,MB (8192$\times$16, 20-cycle, non-inclusive), DDR4-3200 (\texttt{1M} warmup / \texttt{5M} sim).
           \item \textbf{Sanity Control (\texttt{L2C prefetcher = "no"}):}\\
-            \texttt{ctrl\_nopf\_srrip}: 1,149,732 LLC misses\\
-            \texttt{ctrl\_nopf\_pa\_rrip}: 1,148,368 LLC misses (\textbf{0.12\% delta}).
-          \item \textbf{Diagnosed Discrepancy:} Stock ChampSim \texttt{srrip.cc} omits the \texttt{type != WRITE} guard on hits (\texttt{cache.h:515}), promoting dirty writebacks, whereas \texttt{PA-SRRIP}, \texttt{DRRIP}, \texttt{SHiP}, and \texttt{PACMan} guard against it.
+            Stock \texttt{srrip}: 1,149,732 vs \texttt{PA-SRRIP}: 1,148,368 (\textbf{0.12\%});\\
+            \texttt{srrip\_guarded}: \textbf{1,148,368 == 1,148,368} (\textbf{exact equivalence}).
+          \item \textbf{Confirmed Mechanism:} Once the \texttt{type != WRITE} guard is added to stock \texttt{srrip.cc}, both policies match bit-for-bit with prefetching off.
         \end{itemize}
       \end{tcolorbox}
     \end{column}
@@ -404,9 +404,9 @@
       \begin{tcolorbox}[archpanel, top=1.2mm, bottom=1.2mm]
         {\footnotesize\textbf{\color{Obsidian}Matched \texttt{va\_ampm\_lite} \& \texttt{ip\_stride} Findings}}\par\vspace{0.05cm}
         \begin{itemize}\setlength{\itemsep}{0.14em}\scriptsize
-          \item \textbf{Heterogeneous Weighted Speedup:} Under \texttt{va\_ampm\_lite}, \texttt{PA-SRRIP} (\texttt{0.9182}) improves WS by \textbf{+1.74\%} vs \texttt{LRU} (\texttt{0.9025}) and \textbf{+1.19\%} vs unguarded \texttt{SRRIP*} (\texttt{0.9074}); Harmonic Speedup reaches \texttt{0.9135}.
-          \item \textbf{Recovers \texttt{omnetpp} to LRU Level:} Stock \texttt{SRRIP*} drops \texttt{omnetpp} to \texttt{0.2770}; \texttt{PA-SRRIP} recovers it to \texttt{0.2923} (vs \texttt{0.2895} LRU) while keeping \texttt{mcf} at \texttt{0.0952} and \texttt{perlbench} flat (\texttt{1.832}).
-          \item \textbf{Consistent on \texttt{ip\_stride}:} \texttt{PA-Adaptive} (\texttt{0.9176}) and \texttt{PA-SRRIP} (\texttt{0.9172}) exceed \texttt{LRU} (\texttt{0.9041}) and \texttt{SRRIP*} (\texttt{0.9113}), matching \texttt{PACMan-HM} (\texttt{0.9177}).
+          \item \textbf{Heterogeneous Weighted Speedup:} Under \texttt{va\_ampm\_lite}, \texttt{PA-SRRIP} (\texttt{0.9182}) improves WS by \textbf{+1.74\%} vs \texttt{LRU} (\texttt{0.9025}) and \textbf{+0.53\%} vs guarded \texttt{SRRIP-G} (\texttt{0.9134}, \texttt{-18.7K} misses); Harmonic Speedup reaches \texttt{0.9135} (vs \texttt{0.9076} \texttt{SRRIP-G}).
+          \item \textbf{Recovers \texttt{omnetpp} to LRU Level:} \texttt{PA-SRRIP} restores \texttt{omnetpp} (\texttt{0.2923} vs \texttt{0.2889} \texttt{SRRIP-G}) and lifts \texttt{mcf} (\texttt{0.0952} vs \texttt{0.0936}) while keeping \texttt{perlbench} flat (\texttt{1.832}).
+          \item \textbf{Writeback Guard Isolates Effect on \texttt{ip\_stride}:} With \texttt{ip\_stride}, \texttt{PA-SRRIP} (\texttt{0.9172}) essentially ties guarded \texttt{SRRIP-G} (\texttt{0.9167}, \texttt{+0.06\%}), showing that under milder prefetching, the \texttt{WRITE} guard explained the gap vs stock \texttt{SRRIP*}.
         \end{itemize}
       \end{tcolorbox}
     \end{column}
@@ -433,7 +433,7 @@
           \item \textbf{Misses Do Not Map 1-to-1 to IPC:}\\
             On \texttt{mcf x 4}, \texttt{DRRIP} incurs \emph{more} demand misses than \texttt{SRRIP*} (\texttt{2.854M} vs \texttt{2.835M}) yet higher IPC (\texttt{0.0806} vs \texttt{0.0793}).
           \item \textbf{Why \texttt{PA-Adaptive} Ties \texttt{PA-SRRIP}:}\\
-            L2 absorbs timely hits first; under circular $RRPV=3$ reuse ($p\approx 2\text{--}3\%$ from earlier 20M runs), counter drift $\mathbb{E}[\Delta C]<0$ is predicted to stay below 32.
+            L2 absorbs timely hits first; logged telemetry confirms \texttt{C} finishes at \textbf{0/63} (\texttt{mcf x 4} \& \texttt{mix1 va\_ampm\_lite}) and spends \textbf{86--99\%} of fills in \texttt{Filtering Mode} ($C < 32$).
         \end{itemize}
       \end{tcolorbox}
     \end{column}
@@ -480,7 +480,7 @@
         {\footnotesize\textbf{\color{Obsidian}Summary of Contributions}}\par\vspace{0.05cm}
         \begin{itemize}\setlength{\itemsep}{0.12em}\scriptsize
           \item \textbf{Zero-SRAM Heterogeneous Improvement:}\\
-            \texttt{PA-SRRIP} delivers \textbf{0.9182} Weighted Speedup (\textbf{+1.74\%} vs \texttt{LRU}, \textbf{+1.19\%} vs stock \texttt{SRRIP*}) on \texttt{mix1\_het} and recovers \texttt{omnetpp} to \texttt{0.2923}.
+            \texttt{PA-SRRIP} delivers \textbf{0.9182} Weighted Speedup (\textbf{+1.74\%} vs \texttt{LRU}, \textbf{+0.53\%} vs guarded \texttt{SRRIP-G}) under \texttt{va\_ampm\_lite} on \texttt{mix1\_het}.
           \item \textbf{Matched Cross-Prefetcher Rigor:}\\
             Evaluated across both \texttt{va\_ampm\_lite} and \texttt{ip\_stride} against \texttt{SRRIP*}, \texttt{DRRIP}, \texttt{PACMan-HM}, and \texttt{SHiP}.
           \item \textbf{Storage \& Negative-Result Audit:}\\
